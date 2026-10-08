@@ -1,10 +1,13 @@
 using Comments.Api.HealthChecks;
+using Comments.Application.Users;
 using Comments.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("CommentsDb"));
+
+builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);

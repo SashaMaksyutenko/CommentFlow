@@ -1,4 +1,6 @@
+using Comments.Application.Users;
 using Comments.Infrastructure.Persistence;
+using Comments.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +19,8 @@ public static class DependencyInjection
         services.AddDbContext<CommentsDbContext>(options =>
             // Retries transient failures, e.g. while SQL Server is still starting up.
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
+
+        services.AddScoped<IUserRepository, UserRepository>();
 
         return services;
     }

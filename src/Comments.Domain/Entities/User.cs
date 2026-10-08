@@ -24,4 +24,9 @@ public class User
     public string Email { get; private set; }
 
     public string? HomePage { get; private set; }
+
+    public void ChangeHomePage(string? homePage)
+    {
+        HomePage = homePage;
+    }
 }
