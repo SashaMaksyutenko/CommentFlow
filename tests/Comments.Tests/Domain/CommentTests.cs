@@ -8,7 +8,6 @@ public class CommentTests
     [Fact]
     public void Constructor_WithValidData_SetsProperties()
     {
-        // Remember the time before creating, to check CreatedAt is "now" in UTC.
         var before = DateTime.UtcNow;
 
         var comment = new Comment(userId: 1, parentId: 7, "Hello", "127.0.0.1", "Mozilla/5.0");

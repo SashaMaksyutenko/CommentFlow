@@ -1,8 +1,6 @@
 namespace Comments.Domain.Entities;
 
-/// <summary>
-/// The author of comments. Identified by the pair of user name and e-mail.
-/// </summary>
+// A user is identified by user name + e-mail
 public class User
 {
     public const int UserNameMaxLength = 50;

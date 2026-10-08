@@ -9,8 +9,7 @@ public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
     public HealthEndpointTests(WebApplicationFactory<Program> factory)
     {
-        // Port 1 has no SQL Server listening, so the database is always unreachable
-        // and tests do not depend on a running SQL Server.
+        // Nothing listens on port 1, so the DB is always unreachable here
         _factory = factory.WithWebHostBuilder(builder =>
             builder.UseSetting(
                 "ConnectionStrings:CommentsDb",

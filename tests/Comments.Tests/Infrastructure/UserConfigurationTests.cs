@@ -9,7 +9,7 @@ public class UserConfigurationTests
     [Fact]
     public void UserNameAndEmail_HaveUniqueIndex()
     {
-        // The EF model is built in memory; no database connection is opened.
+        // Builds the EF model only, no DB connection
         var options = new DbContextOptionsBuilder<CommentsDbContext>()
             .UseSqlServer("Server=unused")
             .Options;

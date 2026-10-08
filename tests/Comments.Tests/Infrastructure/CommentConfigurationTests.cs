@@ -7,8 +7,7 @@ namespace Comments.Tests.Infrastructure;
 
 public class CommentConfigurationTests
 {
-    // Builds the EF model in memory and returns the Comment entity metadata.
-    // No database connection is opened, so these tests do not need SQL Server.
+    // Builds the EF model only, no DB connection
     private static IEntityType GetCommentEntity()
     {
         var options = new DbContextOptionsBuilder<CommentsDbContext>()
@@ -25,9 +24,7 @@ public class CommentConfigurationTests
         var parentForeignKey = GetCommentEntity().GetForeignKeys()
             .Single(fk => fk.Properties.Single().Name == nameof(Comment.ParentId));
 
-        // Optional: top-level comments have no parent.
         Assert.False(parentForeignKey.IsRequired);
-        // SQL Server forbids cascade delete on a self-referencing table.
         Assert.Equal(DeleteBehavior.Restrict, parentForeignKey.DeleteBehavior);
     }
 
