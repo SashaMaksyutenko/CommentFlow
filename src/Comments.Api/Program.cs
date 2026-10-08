@@ -1,9 +1,23 @@
+using Comments.Api.HealthChecks;
+using Comments.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHealthChecks();
+builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("CommentsDb"));
+
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
 var app = builder.Build();
 
-app.MapHealthChecks("/health");
+// Liveness: the API process is up. Runs no checks.
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
+
+// Readiness: the API can reach its dependencies (database).
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
 
 app.Run();
