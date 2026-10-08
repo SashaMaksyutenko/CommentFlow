@@ -16,6 +16,8 @@ public class CommentsDbContext : DbContext
     // "=> Set<Comment>()" avoids a nullable warning: EF always returns a ready DbSet.
     public DbSet<Comment> Comments => Set<Comment>();
 
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Picks up every IEntityTypeConfiguration<T> class in this project.

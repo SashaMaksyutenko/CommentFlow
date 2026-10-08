@@ -83,4 +83,19 @@ public class Comment
 
     // Read-only view of the replies: callers can read them but cannot modify the list.
     public IReadOnlyCollection<Comment> Replies => _replies;
+
+    public Attachment? Attachment { get; private set; }
+
+    // Only one file per comment
+    public void Attach(Attachment attachment)
+    {
+        ArgumentNullException.ThrowIfNull(attachment);
+
+        if (Attachment is not null)
+        {
+            throw new InvalidOperationException("Comment already has an attachment.");
+        }
+
+        Attachment = attachment;
+    }
 }

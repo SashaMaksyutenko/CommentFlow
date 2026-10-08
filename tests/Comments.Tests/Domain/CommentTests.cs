@@ -1,4 +1,5 @@
 using Comments.Domain.Entities;
+using Comments.Domain.Enums;
 
 namespace Comments.Tests.Domain;
 
@@ -52,5 +53,27 @@ public class CommentTests
     public void Constructor_WithInvalidParentId_Throws(int parentId)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new Comment(1, parentId, "Hello", null, null));
+    }
+
+    [Fact]
+    public void Attach_FirstFile_SetsAttachment()
+    {
+        var comment = new Comment(1, null, "Hello", null, null);
+        var file = new Attachment("a.txt", "b.txt", "text/plain", 10, AttachmentType.Text);
+
+        comment.Attach(file);
+
+        Assert.Same(file, comment.Attachment);
+    }
+
+    [Fact]
+    public void Attach_SecondFile_Throws()
+    {
+        var comment = new Comment(1, null, "Hello", null, null);
+        comment.Attach(new Attachment("a.txt", "b.txt", "text/plain", 10, AttachmentType.Text));
+
+        var second = new Attachment("c.txt", "d.txt", "text/plain", 10, AttachmentType.Text);
+
+        Assert.Throws<InvalidOperationException>(() => comment.Attach(second));
     }
 }
