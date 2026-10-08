@@ -12,6 +12,10 @@ public class CommentsDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
 
+    // Each DbSet is a table we can query, e.g. dbContext.Comments.Where(...).
+    // "=> Set<Comment>()" avoids a nullable warning: EF always returns a ready DbSet.
+    public DbSet<Comment> Comments => Set<Comment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Picks up every IEntityTypeConfiguration<T> class in this project.
