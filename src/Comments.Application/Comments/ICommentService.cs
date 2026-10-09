@@ -1,3 +1,5 @@
+using Comments.Application.Common;
+
 namespace Comments.Application.Comments;
 
 public interface ICommentService
@@ -7,4 +9,6 @@ public interface ICommentService
         string? ipAddress,
         string? userAgent,
         CancellationToken cancellationToken);
+
+    Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken);
 }

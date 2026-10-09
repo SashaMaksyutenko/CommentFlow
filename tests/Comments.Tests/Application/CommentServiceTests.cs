@@ -1,5 +1,6 @@
 using Comments.Application.Captcha;
 using Comments.Application.Comments;
+using Comments.Application.Common;
 using Comments.Application.Users;
 using Comments.Application.Validation;
 using Comments.Domain.Entities;
@@ -127,11 +128,38 @@ public class CommentServiceTests
         Assert.Null(_comments.Added[0].UserAgent);
     }
 
-    // Ids are set by the database, in tests we set them through the private setter
-    private static T WithId<T>(T entity, int id)
+    [Fact]
+    public async Task GetTopLevel_SecondPage_SkipsFirst25AndReturnsPageInfo()
     {
-        typeof(T).GetProperty("Id")!.SetValue(entity, id);
-        return entity;
+        var user = TestData.CreateUser(1, "Sasha1", "sasha@example.com");
+        _comments.Page = [TestData.CreateTopLevelComment(30, user, DateTime.UtcNow)];
+        _comments.TotalCount = 30;
+        var query = new GetCommentsQuery { Page = 2, SortBy = CommentSortField.Email, SortDirection = SortDirection.Asc };
+
+        var result = await _service.GetTopLevelAsync(query, CancellationToken.None);
+
+        Assert.Equal(25, _comments.LastSkip);
+        Assert.Equal(25, _comments.LastTake);
+        Assert.Equal(CommentSortField.Email, _comments.LastSortBy);
+        Assert.Equal(SortDirection.Asc, _comments.LastDirection);
+
+        Assert.Equal(2, result.Page);
+        Assert.Equal(25, result.PageSize);
+        Assert.Equal(30, result.TotalCount);
+        Assert.Equal(2, result.TotalPages);
+        var item = Assert.Single(result.Items);
+        Assert.Equal(30, item.Id);
+        Assert.Equal("Sasha1", item.UserName);
+    }
+
+    [Fact]
+    public async Task GetTopLevel_DefaultQuery_IsFirstPageNewestFirst()
+    {
+        await _service.GetTopLevelAsync(new GetCommentsQuery(), CancellationToken.None);
+
+        Assert.Equal(0, _comments.LastSkip);
+        Assert.Equal(CommentSortField.CreatedAt, _comments.LastSortBy);
+        Assert.Equal(SortDirection.Desc, _comments.LastDirection);
     }
 
     private class FakeCaptchaService : ICaptchaService
@@ -159,7 +187,7 @@ public class CommentServiceTests
         public Task<User> GetOrCreateAsync(string userName, string email, string? homePage, CancellationToken cancellationToken)
         {
             CallCount++;
-            return Task.FromResult(WithId(new User(userName, email, homePage), UserId));
+            return Task.FromResult(new User(userName, email, homePage).WithId(UserId));
         }
     }
 
@@ -174,8 +202,30 @@ public class CommentServiceTests
 
         public Task AddAsync(Comment comment, CancellationToken cancellationToken)
         {
-            Added.Add(WithId(comment, Added.Count + 1));
+            Added.Add(comment.WithId(Added.Count + 1));
             return Task.CompletedTask;
+        }
+
+        public List<Comment> Page { get; set; } = [];
+
+        public int TotalCount { get; set; }
+
+        public int LastSkip { get; private set; } = -1;
+
+        public int LastTake { get; private set; } = -1;
+
+        public CommentSortField LastSortBy { get; private set; }
+
+        public SortDirection LastDirection { get; private set; }
+
+        public Task<(IReadOnlyList<Comment> Items, int TotalCount)> GetTopLevelPageAsync(
+            CommentSortField sortBy, SortDirection direction, int skip, int take, CancellationToken cancellationToken)
+        {
+            LastSortBy = sortBy;
+            LastDirection = direction;
+            LastSkip = skip;
+            LastTake = take;
+            return Task.FromResult<(IReadOnlyList<Comment>, int)>((Page, TotalCount));
         }
     }
 }

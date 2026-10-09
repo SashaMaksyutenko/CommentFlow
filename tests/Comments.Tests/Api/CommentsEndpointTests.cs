@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Comments.Application.Comments;
+using Comments.Application.Common;
 using Comments.Application.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -96,6 +97,11 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
             }
 
             return Task.FromResult(new CommentResponse(1, null, request.UserName, request.Email, request.HomePage, request.Text, DateTime.UtcNow));
+        }
+
+        public Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new PagedResponse<CommentResponse>([], query.Page, 25, 0));
         }
     }
 }

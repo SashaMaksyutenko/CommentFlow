@@ -1,4 +1,5 @@
 using Comments.Application.Captcha;
+using Comments.Application.Common;
 using Comments.Application.Users;
 using Comments.Application.Validation;
 using Comments.Domain.Entities;
@@ -7,6 +8,9 @@ namespace Comments.Application.Comments;
 
 public class CommentService : ICommentService
 {
+    // Fixed by the task: 25 comments per page
+    public const int PageSize = 25;
+
     private readonly ICaptchaService _captchaService;
     private readonly IUserService _userService;
     private readonly ICommentRepository _comments;
@@ -62,6 +66,18 @@ public class CommentService : ICommentService
         await _comments.AddAsync(comment, cancellationToken);
 
         return CommentResponse.From(comment, user);
+    }
+
+    public async Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken)
+    {
+        var skip = (query.Page - 1) * PageSize;
+
+        var (comments, totalCount) = await _comments.GetTopLevelPageAsync(
+            query.SortBy, query.SortDirection, skip, PageSize, cancellationToken);
+
+        var items = comments.Select(c => CommentResponse.From(c, c.User)).ToList();
+
+        return new PagedResponse<CommentResponse>(items, query.Page, PageSize, totalCount);
     }
 
     private static string? Truncate(string? value, int maxLength)
