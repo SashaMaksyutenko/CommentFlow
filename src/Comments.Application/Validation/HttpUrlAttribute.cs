@@ -28,7 +28,13 @@ public class HttpUrlAttribute : ValidationAttribute
             return true;
         }
 
-        return Uri.TryCreate(text.Trim(), UriKind.Absolute, out var uri)
+        return IsHttpUrl(text);
+    }
+
+    // Also used for href in comment links
+    public static bool IsHttpUrl(string value)
+    {
+        return Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
             && !string.IsNullOrEmpty(uri.Host);
     }

@@ -1,4 +1,3 @@
-using System.Net;
 using Comments.Application.Captcha;
 using Comments.Application.Users;
 using Comments.Application.Validation;
@@ -11,12 +10,18 @@ public class CommentService : ICommentService
     private readonly ICaptchaService _captchaService;
     private readonly IUserService _userService;
     private readonly ICommentRepository _comments;
+    private readonly ICommentTextSanitizer _sanitizer;
 
-    public CommentService(ICaptchaService captchaService, IUserService userService, ICommentRepository comments)
+    public CommentService(
+        ICaptchaService captchaService,
+        IUserService userService,
+        ICommentRepository comments,
+        ICommentTextSanitizer sanitizer)
     {
         _captchaService = captchaService;
         _userService = userService;
         _comments = comments;
+        _sanitizer = sanitizer;
     }
 
     public async Task<CommentResponse> CreateAsync(
@@ -25,7 +30,13 @@ public class CommentService : ICommentService
         string? userAgent,
         CancellationToken cancellationToken)
     {
-        // Captcha goes first, so nothing else runs for bots
+        // Checked before the captcha, so a typo in tags doesn't burn the captcha
+        if (!_sanitizer.TrySanitize(request.Text, out var text, out var textError))
+        {
+            throw new FieldValidationException(nameof(CreateCommentRequest.Text), textError);
+        }
+
+        // Captcha goes before any DB work, so nothing else runs for bots
         var captchaIsValid = await _captchaService.ValidateAsync(request.CaptchaId, request.CaptchaAnswer, cancellationToken);
         if (!captchaIsValid)
         {
@@ -40,9 +51,6 @@ public class CommentService : ICommentService
         }
 
         var user = await _userService.GetOrCreateAsync(request.UserName, request.Email, request.HomePage, cancellationToken);
-
-        // Encode all HTML for now, until the allowed tags whitelist is added
-        var text = WebUtility.HtmlEncode(request.Text.Trim());
 
         var comment = new Comment(
             user.Id,

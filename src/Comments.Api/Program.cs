@@ -11,6 +11,7 @@ builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("Co
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddSingleton<ICommentTextSanitizer, CommentTextSanitizer>();
 
 builder.Services.AddControllers(options =>
 {

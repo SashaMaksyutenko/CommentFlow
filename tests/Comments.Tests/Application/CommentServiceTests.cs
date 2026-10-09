@@ -15,7 +15,7 @@ public class CommentServiceTests
 
     public CommentServiceTests()
     {
-        _service = new CommentService(_captcha, _users, _comments);
+        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer());
     }
 
     private static CreateCommentRequest ValidRequest() => new()
@@ -85,14 +85,28 @@ public class CommentServiceTests
     }
 
     [Fact]
-    public async Task Create_TextWithHtml_IsEncoded()
+    public async Task Create_TextWithAllowedTags_IsSavedWithTags()
     {
         var request = ValidRequest();
-        request.Text = "  <script>alert(1)</script>  ";
+        request.Text = "Hi <strong>all</strong> & <a href=\"https://example.com\">link</a>";
 
         var result = await _service.CreateAsync(request, null, null, CancellationToken.None);
 
-        Assert.Equal("&lt;script&gt;alert(1)&lt;/script&gt;", result.Text);
+        Assert.Equal("Hi <strong>all</strong> &amp; <a href=\"https://example.com\">link</a>", result.Text);
+    }
+
+    [Fact]
+    public async Task Create_TextWithForbiddenTag_ThrowsWithoutUsingCaptcha()
+    {
+        var request = ValidRequest();
+        request.Text = "<script>alert(1)</script>";
+
+        var ex = await Assert.ThrowsAsync<FieldValidationException>(() =>
+            _service.CreateAsync(request, null, null, CancellationToken.None));
+
+        Assert.Equal(nameof(CreateCommentRequest.Text), ex.Field);
+        Assert.Equal(0, _captcha.CallCount);
+        Assert.Empty(_comments.Added);
     }
 
     [Fact]
@@ -124,11 +138,16 @@ public class CommentServiceTests
     {
         public bool IsValid { get; set; } = true;
 
+        public int CallCount { get; private set; }
+
         public Task<CaptchaChallenge> CreateAsync(CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task<bool> ValidateAsync(string captchaId, string answer, CancellationToken cancellationToken) =>
-            Task.FromResult(IsValid);
+        public Task<bool> ValidateAsync(string captchaId, string answer, CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return Task.FromResult(IsValid);
+        }
     }
 
     private class FakeUserService : IUserService
