@@ -1,4 +1,5 @@
 using Comments.Application.Captcha;
+using Comments.Application.Comments;
 using Comments.Application.Users;
 using Comments.Infrastructure.Captcha;
 using Comments.Infrastructure.Persistence;
@@ -23,6 +24,7 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ICommentRepository, CommentRepository>();
 
         // In-memory for now, will be replaced with Redis
         services.AddDistributedMemoryCache();

@@ -1,15 +1,22 @@
 using Comments.Api.HealthChecks;
+using Comments.Application.Comments;
 using Comments.Application.Users;
 using Comments.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("CommentsDb"));
 
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // Validation errors use JSON names ("userName"), the same as in the request body
+    options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider());
+});
 
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
