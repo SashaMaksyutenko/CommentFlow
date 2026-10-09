@@ -26,6 +26,27 @@ public class CommentRepository : ICommentRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Goes down level by level: one query per depth level, until a level has no replies
+    public async Task<IReadOnlyList<Comment>> GetAllRepliesAsync(int commentId, CancellationToken cancellationToken)
+    {
+        var result = new List<Comment>();
+        var parentIds = new List<int> { commentId };
+
+        while (parentIds.Count > 0)
+        {
+            var level = await _dbContext.Comments
+                .AsNoTracking()
+                .Include(c => c.User)
+                .Where(c => c.ParentId != null && parentIds.Contains(c.ParentId.Value))
+                .ToListAsync(cancellationToken);
+
+            result.AddRange(level);
+            parentIds = level.Select(c => c.Id).ToList();
+        }
+
+        return result;
+    }
+
     public async Task<(IReadOnlyList<Comment> Items, int TotalCount)> GetTopLevelPageAsync(
         CommentSortField sortBy,
         SortDirection direction,

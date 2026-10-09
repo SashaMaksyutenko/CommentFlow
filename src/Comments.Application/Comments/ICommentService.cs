@@ -11,4 +11,7 @@ public interface ICommentService
         CancellationToken cancellationToken);
 
     Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken);
+
+    // Returns null if the comment doesn't exist
+    Task<List<CommentResponse>?> GetRepliesAsync(int commentId, CancellationToken cancellationToken);
 }

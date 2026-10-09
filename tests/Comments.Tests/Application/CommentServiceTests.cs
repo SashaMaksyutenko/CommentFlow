@@ -153,6 +153,30 @@ public class CommentServiceTests
     }
 
     [Fact]
+    public async Task GetReplies_CommentDoesNotExist_ReturnsNull()
+    {
+        Assert.Null(await _service.GetRepliesAsync(999, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetReplies_ExistingComment_ReturnsTree()
+    {
+        var user = TestData.CreateUser(1, "Sasha1", "sasha@example.com");
+        _comments.ExistingIds.Add(1);
+        _comments.Replies =
+        [
+            TestData.CreateComment(2, 1, user, DateTime.UtcNow),
+            TestData.CreateComment(3, 2, user, DateTime.UtcNow.AddMinutes(1))
+        ];
+
+        var tree = await _service.GetRepliesAsync(1, CancellationToken.None);
+
+        var reply = Assert.Single(tree!);
+        Assert.Equal(2, reply.Id);
+        Assert.Equal(3, Assert.Single(reply.Replies).Id);
+    }
+
+    [Fact]
     public async Task GetTopLevel_DefaultQuery_IsFirstPageNewestFirst()
     {
         await _service.GetTopLevelAsync(new GetCommentsQuery(), CancellationToken.None);
@@ -205,6 +229,11 @@ public class CommentServiceTests
             Added.Add(comment.WithId(Added.Count + 1));
             return Task.CompletedTask;
         }
+
+        public List<Comment> Replies { get; set; } = [];
+
+        public Task<IReadOnlyList<Comment>> GetAllRepliesAsync(int commentId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Comment>>(Replies);
 
         public List<Comment> Page { get; set; } = [];
 

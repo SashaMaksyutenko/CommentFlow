@@ -124,6 +124,28 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
         Assert.Null(_service.LastQuery);
     }
 
+    [Fact]
+    public async Task GetReplies_UnknownComment_Returns404()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/comments/999/replies");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetReplies_ExistingComment_ReturnsNestedJson()
+    {
+        var client = _factory.CreateClient();
+
+        var replies = await client.GetFromJsonAsync<List<CommentResponse>>("/api/comments/1/replies");
+
+        var reply = Assert.Single(replies!);
+        Assert.Equal(2, reply.Id);
+        Assert.Equal(3, Assert.Single(reply.Replies).Id);
+    }
+
     private class FakeCommentService : ICommentService
     {
         public int CallCount { get; private set; }
@@ -151,6 +173,19 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
         {
             LastQuery = query;
             return Task.FromResult(new PagedResponse<CommentResponse>([], query.Page, 25, 0));
+        }
+
+        // Comment 1 exists and has reply 2, which has reply 3
+        public Task<List<CommentResponse>?> GetRepliesAsync(int commentId, CancellationToken cancellationToken)
+        {
+            if (commentId != 1)
+            {
+                return Task.FromResult<List<CommentResponse>?>(null);
+            }
+
+            var reply3 = new CommentResponse(3, 2, "B", "b@example.com", null, "deeper", DateTime.UtcNow);
+            var reply2 = new CommentResponse(2, 1, "A", "a@example.com", null, "reply", DateTime.UtcNow) { Replies = [reply3] };
+            return Task.FromResult<List<CommentResponse>?>([reply2]);
         }
     }
 }

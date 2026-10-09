@@ -27,6 +27,14 @@ public class CommentsController : ControllerBase
         return Ok(await _commentService.GetTopLevelAsync(query, cancellationToken));
     }
 
+    // All replies under the comment as a tree (each reply has its own "replies")
+    [HttpGet("{id:int}/replies")]
+    public async Task<ActionResult<List<CommentResponse>>> GetReplies(int id, CancellationToken cancellationToken)
+    {
+        var replies = await _commentService.GetRepliesAsync(id, cancellationToken);
+        return replies is null ? NotFound() : Ok(replies);
+    }
+
     // [ApiController] returns 400 by itself when the request attributes fail,
     // so this method only runs for a valid request
     [HttpPost]

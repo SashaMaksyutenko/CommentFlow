@@ -19,7 +19,12 @@ internal static class TestData
 
     public static Comment CreateTopLevelComment(int id, User user, DateTime createdAt)
     {
-        var comment = new Comment(user.Id, null, $"Comment {id}", null, null).WithId(id);
+        return CreateComment(id, null, user, createdAt);
+    }
+
+    public static Comment CreateComment(int id, int? parentId, User user, DateTime createdAt)
+    {
+        var comment = new Comment(user.Id, parentId, $"Comment {id}", null, null).WithId(id);
         typeof(Comment).GetProperty(nameof(Comment.User))!.SetValue(comment, user);
         typeof(Comment).GetProperty(nameof(Comment.CreatedAt))!.SetValue(comment, createdAt);
         return comment;

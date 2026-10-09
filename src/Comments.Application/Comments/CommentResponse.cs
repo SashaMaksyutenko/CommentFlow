@@ -12,6 +12,9 @@ public record CommentResponse(
     string Text,
     DateTime CreatedAt)
 {
+    // Filled only by the replies endpoint, empty in the top-level list
+    public List<CommentResponse> Replies { get; init; } = [];
+
     public static CommentResponse From(Comment comment, User user)
     {
         return new CommentResponse(

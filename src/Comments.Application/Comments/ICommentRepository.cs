@@ -9,6 +9,9 @@ public interface ICommentRepository
 
     Task AddAsync(Comment comment, CancellationToken cancellationToken);
 
+    // All replies at any depth under the comment, as a flat list with User loaded
+    Task<IReadOnlyList<Comment>> GetAllRepliesAsync(int commentId, CancellationToken cancellationToken);
+
     // Comments without a parent, with their User loaded
     Task<(IReadOnlyList<Comment> Items, int TotalCount)> GetTopLevelPageAsync(
         CommentSortField sortBy,

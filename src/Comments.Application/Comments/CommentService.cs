@@ -80,6 +80,17 @@ public class CommentService : ICommentService
         return new PagedResponse<CommentResponse>(items, query.Page, PageSize, totalCount);
     }
 
+    public async Task<List<CommentResponse>?> GetRepliesAsync(int commentId, CancellationToken cancellationToken)
+    {
+        if (!await _comments.ExistsAsync(commentId, cancellationToken))
+        {
+            return null;
+        }
+
+        var replies = await _comments.GetAllRepliesAsync(commentId, cancellationToken);
+        return CommentTreeBuilder.Build(commentId, replies);
+    }
+
     private static string? Truncate(string? value, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))
