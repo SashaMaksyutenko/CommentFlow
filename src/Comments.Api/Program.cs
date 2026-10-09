@@ -9,6 +9,8 @@ builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("Co
 
 builder.Services.AddScoped<IUserService, UserService>();
 
+builder.Services.AddControllers();
+
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
@@ -22,5 +24,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
 });
+
+app.MapControllers();
 
 app.Run();

@@ -1,4 +1,6 @@
+using Comments.Application.Captcha;
 using Comments.Application.Users;
+using Comments.Infrastructure.Captcha;
 using Comments.Infrastructure.Persistence;
 using Comments.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,12 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
 
         services.AddScoped<IUserRepository, UserRepository>();
+
+        // In-memory for now, will be replaced with Redis
+        services.AddDistributedMemoryCache();
+
+        services.AddSingleton<ICaptchaImageGenerator, CaptchaImageGenerator>();
+        services.AddSingleton<ICaptchaService, CaptchaService>();
 
         return services;
     }
