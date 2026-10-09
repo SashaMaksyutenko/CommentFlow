@@ -11,9 +11,10 @@ public class CreateCommentRequest
     [RegularExpression("^[A-Za-z0-9]+$", ErrorMessage = "User name can contain only Latin letters and digits.")]
     public string UserName { get; set; } = "";
 
+    // Stricter than [EmailAddress]: the domain needs a dot and a 2+ letter ending
     [Required]
     [MaxLength(User.EmailMaxLength)]
-    [EmailAddress]
+    [RegularExpression(@"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", ErrorMessage = "E-mail format is invalid.")]
     public string Email { get; set; } = "";
 
     [MaxLength(User.HomePageMaxLength)]

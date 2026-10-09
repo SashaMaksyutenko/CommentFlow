@@ -59,12 +59,29 @@ public class CreateCommentRequestValidationTests
     [InlineData("not-an-email")]
     [InlineData("@example.com")]
     [InlineData("sasha@")]
+    [InlineData("sasha@localhost")]
+    [InlineData("sasha@example")]
+    [InlineData("sasha@example.c")]
+    [InlineData("sa sha@example.com")]
+    [InlineData("sasha@exa mple.com")]
     public void Email_WrongFormat_IsInvalid(string email)
     {
         var request = ValidRequest();
         request.Email = email;
 
         Assert.Contains(nameof(CreateCommentRequest.Email), Validate(request));
+    }
+
+    [Theory]
+    [InlineData("sasha@example.com")]
+    [InlineData("first.last+tag@sub.example.co.uk")]
+    [InlineData("UPPER@EXAMPLE.COM")]
+    public void Email_CommonFormats_AreValid(string email)
+    {
+        var request = ValidRequest();
+        request.Email = email;
+
+        Assert.Empty(Validate(request));
     }
 
     [Theory]
