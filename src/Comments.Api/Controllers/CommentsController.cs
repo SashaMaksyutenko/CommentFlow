@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Comments.Application.Comments;
+using Comments.Application.Common;
 using Comments.Application.Validation;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,16 @@ public class CommentsController : ControllerBase
     public CommentsController(ICommentService commentService)
     {
         _commentService = commentService;
+    }
+
+    // Top-level comments only, 25 per page.
+    // Example: GET /api/comments?page=2&sortBy=userName&sortDirection=asc
+    [HttpGet]
+    public async Task<ActionResult<PagedResponse<CommentResponse>>> GetTopLevel(
+        [FromQuery] GetCommentsQuery query,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _commentService.GetTopLevelAsync(query, cancellationToken));
     }
 
     // [ApiController] returns 400 by itself when the request attributes fail,

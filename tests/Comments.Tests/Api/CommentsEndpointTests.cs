@@ -78,9 +78,57 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
         Assert.Equal(["Wrong captcha."], problem!.Errors["captchaAnswer"]);
     }
 
+    [Fact]
+    public async Task Get_WithoutParameters_UsesFirstPageNewestFirst()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/comments");
+        var page = await response.Content.ReadFromJsonAsync<PagedResponse<CommentResponse>>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, page!.Page);
+        Assert.Equal(25, page.PageSize);
+        Assert.Equal(1, _service.LastQuery!.Page);
+        Assert.Equal(CommentSortField.CreatedAt, _service.LastQuery.SortBy);
+        Assert.Equal(SortDirection.Desc, _service.LastQuery.SortDirection);
+    }
+
+    [Fact]
+    public async Task Get_WithParameters_PassesThemToService()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/comments?page=3&sortBy=userName&sortDirection=asc");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(3, _service.LastQuery!.Page);
+        Assert.Equal(CommentSortField.UserName, _service.LastQuery.SortBy);
+        Assert.Equal(SortDirection.Asc, _service.LastQuery.SortDirection);
+    }
+
+    [Theory]
+    [InlineData("page=0", "page")]
+    [InlineData("sortBy=text", "sortBy")]
+    [InlineData("sortBy=7", "sortBy")]
+    [InlineData("sortDirection=up", "sortDirection")]
+    public async Task Get_WithBadParameter_Returns400(string queryString, string field)
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/comments?{queryString}");
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(problem!.Errors.Keys, key => key.Equals(field, StringComparison.OrdinalIgnoreCase));
+        Assert.Null(_service.LastQuery);
+    }
+
     private class FakeCommentService : ICommentService
     {
         public int CallCount { get; private set; }
+
+        public GetCommentsQuery? LastQuery { get; private set; }
 
         public string? LastUserAgent { get; private set; }
 
@@ -101,6 +149,7 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
 
         public Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken)
         {
+            LastQuery = query;
             return Task.FromResult(new PagedResponse<CommentResponse>([], query.Page, 25, 0));
         }
     }

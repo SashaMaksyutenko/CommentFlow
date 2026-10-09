@@ -39,6 +39,18 @@ public class CommentConfigurationTests
     }
 
     [Fact]
+    public void CreatedAt_ReadFromDatabase_IsUtc()
+    {
+        var converter = GetCommentEntity().FindProperty(nameof(Comment.CreatedAt))!.GetValueConverter()!;
+        var fromDatabase = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Unspecified);
+
+        var value = (DateTime)converter.ConvertFromProvider(fromDatabase)!;
+
+        Assert.Equal(DateTimeKind.Utc, value.Kind);
+        Assert.Equal(fromDatabase.Ticks, value.Ticks);
+    }
+
+    [Fact]
     public void ParentIdAndCreatedAt_HaveIndexForTopLevelListing()
     {
         var hasIndex = GetCommentEntity().GetIndexes()

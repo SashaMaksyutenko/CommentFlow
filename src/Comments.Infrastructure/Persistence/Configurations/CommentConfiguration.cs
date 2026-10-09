@@ -17,8 +17,11 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.Property(c => c.Text)
             .IsRequired();
 
+        // We always save UTC, but SQL Server doesn't store the kind, so EF reads it back
+        // as "Unspecified" and JSON has no "Z". Mark it as UTC again when reading.
         builder.Property(c => c.CreatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
 
         builder.Property(c => c.IpAddress)
             .HasMaxLength(Comment.IpAddressMaxLength);
