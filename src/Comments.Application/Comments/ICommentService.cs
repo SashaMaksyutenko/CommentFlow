@@ -1,11 +1,14 @@
+using Comments.Application.Attachments;
 using Comments.Application.Common;
 
 namespace Comments.Application.Comments;
 
 public interface ICommentService
 {
+    // file is optional (null if the user didn't attach anything)
     Task<CommentResponse> CreateAsync(
         CreateCommentRequest request,
+        UploadedFile? file,
         string? ipAddress,
         string? userAgent,
         CancellationToken cancellationToken);

@@ -1,9 +1,11 @@
+using Comments.Application.Attachments;
 using Comments.Application.Captcha;
 using Comments.Application.Comments;
 using Comments.Application.Common;
 using Comments.Application.Users;
 using Comments.Application.Validation;
 using Comments.Domain.Entities;
+using Comments.Domain.Enums;
 
 namespace Comments.Tests.Application;
 
@@ -12,11 +14,14 @@ public class CommentServiceTests
     private readonly FakeCaptchaService _captcha = new();
     private readonly FakeUserService _users = new();
     private readonly FakeCommentRepository _comments = new();
+    private readonly FakeAttachmentService _attachments = new();
     private readonly CommentService _service;
+
+    private static readonly UploadedFile TextFile = new("notes.txt", [72, 105]);
 
     public CommentServiceTests()
     {
-        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer());
+        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments);
     }
 
     private static CreateCommentRequest ValidRequest() => new()
@@ -32,7 +37,7 @@ public class CommentServiceTests
     [Fact]
     public async Task Create_ValidRequest_SavesCommentAndReturnsIt()
     {
-        var result = await _service.CreateAsync(ValidRequest(), "127.0.0.1", "Mozilla/5.0", CancellationToken.None);
+        var result = await _service.CreateAsync(ValidRequest(), null, "127.0.0.1", "Mozilla/5.0", CancellationToken.None);
 
         var saved = Assert.Single(_comments.Added);
         Assert.Equal(FakeUserService.UserId, saved.UserId);
@@ -53,7 +58,7 @@ public class CommentServiceTests
         _captcha.IsValid = false;
 
         var ex = await Assert.ThrowsAsync<FieldValidationException>(() =>
-            _service.CreateAsync(ValidRequest(), null, null, CancellationToken.None));
+            _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None));
 
         Assert.Equal(nameof(CreateCommentRequest.CaptchaAnswer), ex.Field);
         Assert.Empty(_comments.Added);
@@ -67,7 +72,7 @@ public class CommentServiceTests
         request.ParentId = 999;
 
         var ex = await Assert.ThrowsAsync<FieldValidationException>(() =>
-            _service.CreateAsync(request, null, null, CancellationToken.None));
+            _service.CreateAsync(request, null, null, null, CancellationToken.None));
 
         Assert.Equal(nameof(CreateCommentRequest.ParentId), ex.Field);
         Assert.Empty(_comments.Added);
@@ -80,7 +85,7 @@ public class CommentServiceTests
         var request = ValidRequest();
         request.ParentId = 5;
 
-        var result = await _service.CreateAsync(request, null, null, CancellationToken.None);
+        var result = await _service.CreateAsync(request, null, null, null, CancellationToken.None);
 
         Assert.Equal(5, result.ParentId);
     }
@@ -91,7 +96,7 @@ public class CommentServiceTests
         var request = ValidRequest();
         request.Text = "Hi <strong>all</strong> & <a href=\"https://example.com\">link</a>";
 
-        var result = await _service.CreateAsync(request, null, null, CancellationToken.None);
+        var result = await _service.CreateAsync(request, null, null, null, CancellationToken.None);
 
         Assert.Equal("Hi <strong>all</strong> &amp; <a href=\"https://example.com\">link</a>", result.Text);
     }
@@ -103,7 +108,7 @@ public class CommentServiceTests
         request.Text = "<script>alert(1)</script>";
 
         var ex = await Assert.ThrowsAsync<FieldValidationException>(() =>
-            _service.CreateAsync(request, null, null, CancellationToken.None));
+            _service.CreateAsync(request, null, null, null, CancellationToken.None));
 
         Assert.Equal(nameof(CreateCommentRequest.Text), ex.Field);
         Assert.Equal(0, _captcha.CallCount);
@@ -115,7 +120,7 @@ public class CommentServiceTests
     {
         var userAgent = new string('a', Comment.UserAgentMaxLength + 100);
 
-        await _service.CreateAsync(ValidRequest(), null, userAgent, CancellationToken.None);
+        await _service.CreateAsync(ValidRequest(), null, null, userAgent, CancellationToken.None);
 
         Assert.Equal(Comment.UserAgentMaxLength, _comments.Added[0].UserAgent!.Length);
     }
@@ -123,7 +128,7 @@ public class CommentServiceTests
     [Fact]
     public async Task Create_EmptyUserAgent_IsSavedAsNull()
     {
-        await _service.CreateAsync(ValidRequest(), null, "", CancellationToken.None);
+        await _service.CreateAsync(ValidRequest(), null, null, "", CancellationToken.None);
 
         Assert.Null(_comments.Added[0].UserAgent);
     }
@@ -150,6 +155,60 @@ public class CommentServiceTests
         var item = Assert.Single(result.Items);
         Assert.Equal(30, item.Id);
         Assert.Equal("Sasha1", item.UserName);
+    }
+
+    [Fact]
+    public async Task Create_WithFile_SavesFileAndAttachesIt()
+    {
+        await _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None);
+
+        var saved = Assert.Single(_comments.Added);
+        Assert.NotNull(saved.Attachment);
+        Assert.Equal("notes.txt", saved.Attachment.OriginalFileName);
+    }
+
+    [Fact]
+    public async Task Create_WithoutFile_HasNoAttachment()
+    {
+        await _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None);
+
+        Assert.Null(_comments.Added[0].Attachment);
+        Assert.Equal(0, _attachments.SaveCount);
+    }
+
+    [Fact]
+    public async Task Create_WrongCaptcha_DoesNotTouchTheFile()
+    {
+        _captcha.IsValid = false;
+
+        await Assert.ThrowsAsync<FieldValidationException>(() =>
+            _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None));
+
+        Assert.Equal(0, _attachments.SaveCount);
+    }
+
+    [Fact]
+    public async Task Create_BadFile_ThrowsBeforeCreatingUser()
+    {
+        _attachments.ErrorToThrow = new FieldValidationException(AttachmentService.FieldName, "Only JPG, GIF, PNG images and TXT files are allowed.");
+
+        var ex = await Assert.ThrowsAsync<FieldValidationException>(() =>
+            _service.CreateAsync(ValidRequest(), new UploadedFile("virus.exe", [1]), null, null, CancellationToken.None));
+
+        Assert.Equal(AttachmentService.FieldName, ex.Field);
+        Assert.Equal(0, _users.CallCount);
+        Assert.Empty(_comments.Added);
+    }
+
+    [Fact]
+    public async Task Create_DatabaseFails_DeletesStoredFile()
+    {
+        _comments.ThrowOnAdd = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None));
+
+        Assert.Equal(1, _attachments.DeleteCount);
     }
 
     [Fact]
@@ -224,8 +283,15 @@ public class CommentServiceTests
         public Task<bool> ExistsAsync(int id, CancellationToken cancellationToken) =>
             Task.FromResult(ExistingIds.Contains(id));
 
+        public bool ThrowOnAdd { get; set; }
+
         public Task AddAsync(Comment comment, CancellationToken cancellationToken)
         {
+            if (ThrowOnAdd)
+            {
+                throw new InvalidOperationException("DB is down");
+            }
+
             Added.Add(comment.WithId(Added.Count + 1));
             return Task.CompletedTask;
         }
@@ -255,6 +321,32 @@ public class CommentServiceTests
             LastSkip = skip;
             LastTake = take;
             return Task.FromResult<(IReadOnlyList<Comment>, int)>((Page, TotalCount));
+        }
+    }
+
+    private class FakeAttachmentService : IAttachmentService
+    {
+        public FieldValidationException? ErrorToThrow { get; set; }
+
+        public int SaveCount { get; private set; }
+
+        public int DeleteCount { get; private set; }
+
+        public Task<Attachment> SaveAsync(UploadedFile file, CancellationToken cancellationToken)
+        {
+            if (ErrorToThrow is not null)
+            {
+                throw ErrorToThrow;
+            }
+
+            SaveCount++;
+            return Task.FromResult(new Attachment(file.FileName, "stored.txt", "text/plain", file.Content.Length, AttachmentType.Text));
+        }
+
+        public Task DeleteFileAsync(Attachment attachment, CancellationToken cancellationToken)
+        {
+            DeleteCount++;
+            return Task.CompletedTask;
         }
     }
 }

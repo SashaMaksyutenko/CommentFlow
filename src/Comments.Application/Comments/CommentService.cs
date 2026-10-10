@@ -1,3 +1,4 @@
+using Comments.Application.Attachments;
 using Comments.Application.Captcha;
 using Comments.Application.Common;
 using Comments.Application.Users;
@@ -15,21 +16,25 @@ public class CommentService : ICommentService
     private readonly IUserService _userService;
     private readonly ICommentRepository _comments;
     private readonly ICommentTextSanitizer _sanitizer;
+    private readonly IAttachmentService _attachmentService;
 
     public CommentService(
         ICaptchaService captchaService,
         IUserService userService,
         ICommentRepository comments,
-        ICommentTextSanitizer sanitizer)
+        ICommentTextSanitizer sanitizer,
+        IAttachmentService attachmentService)
     {
         _captchaService = captchaService;
         _userService = userService;
         _comments = comments;
         _sanitizer = sanitizer;
+        _attachmentService = attachmentService;
     }
 
     public async Task<CommentResponse> CreateAsync(
         CreateCommentRequest request,
+        UploadedFile? file,
         string? ipAddress,
         string? userAgent,
         CancellationToken cancellationToken)
@@ -54,18 +59,40 @@ public class CommentService : ICommentService
                 "The comment you are replying to does not exist.");
         }
 
-        var user = await _userService.GetOrCreateAsync(request.UserName, request.Email, request.HomePage, cancellationToken);
+        // After the captcha on purpose: resizing images is heavy work, bots shouldn't trigger it
+        var attachment = file is null ? null : await _attachmentService.SaveAsync(file, cancellationToken);
 
-        var comment = new Comment(
-            user.Id,
-            request.ParentId,
-            text,
-            Truncate(ipAddress, Comment.IpAddressMaxLength),
-            Truncate(userAgent, Comment.UserAgentMaxLength));
+        try
+        {
+            var user = await _userService.GetOrCreateAsync(request.UserName, request.Email, request.HomePage, cancellationToken);
 
-        await _comments.AddAsync(comment, cancellationToken);
+            var comment = new Comment(
+                user.Id,
+                request.ParentId,
+                text,
+                Truncate(ipAddress, Comment.IpAddressMaxLength),
+                Truncate(userAgent, Comment.UserAgentMaxLength));
 
-        return CommentResponse.From(comment, user);
+            if (attachment is not null)
+            {
+                comment.Attach(attachment);
+            }
+
+            // Saves the comment and its attachment row together
+            await _comments.AddAsync(comment, cancellationToken);
+
+            return CommentResponse.From(comment, user);
+        }
+        catch
+        {
+            // The file is already on disk, don't leave it there without a comment
+            if (attachment is not null)
+            {
+                await _attachmentService.DeleteFileAsync(attachment, CancellationToken.None);
+            }
+
+            throw;
+        }
     }
 
     public async Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken)

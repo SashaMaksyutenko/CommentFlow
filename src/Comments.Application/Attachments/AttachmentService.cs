@@ -56,6 +56,11 @@ public class AttachmentService : IAttachmentService
         throw new FieldValidationException(FieldName, "Only JPG, GIF, PNG images and TXT files are allowed.");
     }
 
+    public Task DeleteFileAsync(Attachment attachment, CancellationToken cancellationToken)
+    {
+        return _storage.DeleteAsync(attachment.StoredFileName, cancellationToken);
+    }
+
     // A real text file: not too big, valid UTF-8 and no zero bytes (those mean binary data)
     private static void ValidateText(byte[] content)
     {

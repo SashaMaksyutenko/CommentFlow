@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Comments.Application.Attachments;
 using Comments.Application.Comments;
 using Comments.Application.Common;
 using Comments.Application.Validation;
@@ -25,57 +26,100 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
         });
     }
 
-    private static object ValidBody() => new
+    private static Dictionary<string, string> ValidFields() => new()
     {
-        userName = "Sasha1",
-        email = "sasha@example.com",
-        homePage = "https://example.com",
-        text = "Hello",
-        captchaId = "id1",
-        captchaAnswer = "AB12CD"
+        ["userName"] = "Sasha1",
+        ["email"] = "sasha@example.com",
+        ["homePage"] = "https://example.com",
+        ["text"] = "Hello",
+        ["captchaId"] = "id1",
+        ["captchaAnswer"] = "AB12CD"
     };
 
+    // The same multipart/form-data body a browser sends with FormData
+    private static MultipartFormDataContent Form(Dictionary<string, string> fields, string? fileName = null, byte[]? fileContent = null)
+    {
+        var form = new MultipartFormDataContent();
+        foreach (var (name, value) in fields)
+        {
+            form.Add(new StringContent(value), name);
+        }
+
+        if (fileName is not null)
+        {
+            form.Add(new ByteArrayContent(fileContent ?? []), "file", fileName);
+        }
+
+        return form;
+    }
+
     [Fact]
-    public async Task Post_ValidRequest_Returns201WithComment()
+    public async Task Post_ValidForm_Returns201WithComment()
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.UserAgent.ParseAdd("TestBrowser/1.0");
 
-        var response = await client.PostAsJsonAsync("/api/comments", ValidBody());
+        var response = await client.PostAsync("/api/comments", Form(ValidFields()));
         var comment = await response.Content.ReadFromJsonAsync<CommentResponse>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal("Sasha1", comment!.UserName);
         Assert.Equal("TestBrowser/1.0", _service.LastUserAgent);
+        Assert.Null(_service.LastFile);
     }
 
     [Fact]
-    public async Task Post_InvalidRequest_Returns400WithFieldErrors_AndDoesNotCallService()
+    public async Task Post_WithFile_PassesFileToService()
     {
         var client = _factory.CreateClient();
-        var body = new { userName = "Саша", email = "bad", text = "", captchaId = "id1", captchaAnswer = "AB12CD" };
 
-        var response = await client.PostAsJsonAsync("/api/comments", body);
+        var response = await client.PostAsync("/api/comments", Form(ValidFields(), "notes.txt", [72, 105]));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("notes.txt", _service.LastFile!.FileName);
+        Assert.Equal([72, 105], _service.LastFile.Content);
+    }
+
+    [Fact]
+    public async Task Post_InvalidForm_Returns400WithFieldErrors_AndDoesNotCallService()
+    {
+        var client = _factory.CreateClient();
+        var fields = ValidFields();
+        fields["userName"] = "Саша";
+        fields["email"] = "bad";
+        fields["text"] = "";
+
+        var response = await client.PostAsync("/api/comments", Form(fields));
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Contains("userName", problem!.Errors.Keys);
-        Assert.Contains("email", problem.Errors.Keys);
-        Assert.Contains("text", problem.Errors.Keys);
+        Assert.Contains("UserName", problem!.Errors.Keys);
+        Assert.Contains("Email", problem.Errors.Keys);
+        Assert.Contains("Text", problem.Errors.Keys);
         Assert.Equal(0, _service.CallCount);
     }
 
     [Fact]
     public async Task Post_ServiceRejectsField_Returns400WithThatField()
     {
-        _service.ErrorToThrow = new FieldValidationException(nameof(CreateCommentRequest.CaptchaAnswer), "Wrong captcha.");
+        _service.ErrorToThrow = new FieldValidationException("File", "Only JPG, GIF, PNG images and TXT files are allowed.");
         var client = _factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/comments", ValidBody());
+        var response = await client.PostAsync("/api/comments", Form(ValidFields(), "virus.exe", [1]));
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(["Wrong captcha."], problem!.Errors["captchaAnswer"]);
+        Assert.Equal(["Only JPG, GIF, PNG images and TXT files are allowed."], problem!.Errors["File"]);
+    }
+
+    [Fact]
+    public async Task Post_Json_Returns415()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/comments", ValidFields());
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
     }
 
     [Fact]
@@ -154,12 +198,15 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
 
         public string? LastUserAgent { get; private set; }
 
+        public UploadedFile? LastFile { get; private set; }
+
         public FieldValidationException? ErrorToThrow { get; set; }
 
-        public Task<CommentResponse> CreateAsync(CreateCommentRequest request, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
+        public Task<CommentResponse> CreateAsync(CreateCommentRequest request, UploadedFile? file, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
         {
             CallCount++;
             LastUserAgent = userAgent;
+            LastFile = file;
 
             if (ErrorToThrow is not null)
             {

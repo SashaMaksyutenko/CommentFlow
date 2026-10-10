@@ -1,4 +1,5 @@
-using System.Text.Json;
+using Comments.Api.Models;
+using Comments.Application.Attachments;
 using Comments.Application.Comments;
 using Comments.Application.Common;
 using Comments.Application.Validation;
@@ -10,6 +11,9 @@ namespace Comments.Api.Controllers;
 [Route("api/comments")]
 public class CommentsController : ControllerBase
 {
+    // 5 MB image limit + room for the text fields
+    private const int MaxRequestSize = 6 * 1024 * 1024;
+
     private readonly ICommentService _commentService;
 
     public CommentsController(ICommentService commentService)
@@ -35,24 +39,37 @@ public class CommentsController : ControllerBase
         return replies is null ? NotFound() : Ok(replies);
     }
 
+    // Sent as multipart/form-data: the form fields plus an optional "file".
     // [ApiController] returns 400 by itself when the request attributes fail,
-    // so this method only runs for a valid request
+    // so this method only runs for a valid request.
     [HttpPost]
-    public async Task<ActionResult<CommentResponse>> Create(CreateCommentRequest request, CancellationToken cancellationToken)
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(MaxRequestSize)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestSize)]
+    public async Task<ActionResult<CommentResponse>> Create([FromForm] CreateCommentForm form, CancellationToken cancellationToken)
     {
         var userAgent = Request.Headers.UserAgent.ToString();
+        var upload = form.File is null ? null : await ReadFileAsync(form.File, cancellationToken);
 
         try
         {
-            var comment = await _commentService.CreateAsync(request, GetClientIp(), userAgent, cancellationToken);
+            var comment = await _commentService.CreateAsync(form, upload, GetClientIp(), userAgent, cancellationToken);
             return StatusCode(StatusCodes.Status201Created, comment);
         }
         catch (FieldValidationException ex)
         {
-            // Same 400 format as the automatic validation, with a camelCase field name
-            ModelState.AddModelError(JsonNamingPolicy.CamelCase.ConvertName(ex.Field), ex.Message);
+            // Same 400 format and field names ("CaptchaAnswer") as the automatic validation
+            ModelState.AddModelError(ex.Field, ex.Message);
             return ValidationProblem(ModelState);
         }
+    }
+
+    // IFormFile is an ASP.NET type, the Application layer gets plain bytes
+    private static async Task<UploadedFile> ReadFileAsync(IFormFile file, CancellationToken cancellationToken)
+    {
+        using var memory = new MemoryStream();
+        await file.CopyToAsync(memory, cancellationToken);
+        return new UploadedFile(file.FileName, memory.ToArray());
     }
 
     private string? GetClientIp()

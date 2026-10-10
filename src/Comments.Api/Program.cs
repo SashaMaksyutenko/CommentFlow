@@ -1,23 +1,23 @@
 using Comments.Api.HealthChecks;
+using Comments.Application.Attachments;
 using Comments.Application.Comments;
 using Comments.Application.Users;
 using Comments.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("CommentsDb"));
+// Relative path is resolved from the project folder, an absolute one (Docker volume) is used as is
+var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["FileStorage:RootPath"] ?? "uploads");
+
+builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("CommentsDb"), uploadsPath);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddSingleton<ICommentTextSanitizer, CommentTextSanitizer>();
+builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
-builder.Services.AddControllers(options =>
-{
-    // Validation errors use JSON names ("userName"), the same as in the request body
-    options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider());
-});
+builder.Services.AddControllers();
 
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);

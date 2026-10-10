@@ -1,7 +1,10 @@
+using Comments.Application.Attachments;
 using Comments.Application.Captcha;
 using Comments.Application.Comments;
 using Comments.Application.Users;
 using Comments.Infrastructure.Captcha;
+using Comments.Infrastructure.Files;
+using Comments.Infrastructure.Images;
 using Comments.Infrastructure.Persistence;
 using Comments.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +14,7 @@ namespace Comments.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string? connectionString)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string? connectionString, string uploadsPath)
     {
         // Fail fast: without a connection string the API cannot work at all.
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -31,6 +34,9 @@ public static class DependencyInjection
 
         services.AddSingleton<ICaptchaImageGenerator, CaptchaImageGenerator>();
         services.AddSingleton<ICaptchaService, CaptchaService>();
+
+        services.AddSingleton<IImageProcessor, MagickImageProcessor>();
+        services.AddSingleton<IFileStorage>(new LocalFileStorage(uploadsPath));
 
         return services;
     }
