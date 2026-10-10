@@ -6,7 +6,9 @@ public interface IUserRepository
 {
     Task<User?> FindByNameAndEmailAsync(string userName, string email, CancellationToken cancellationToken);
 
-    Task AddAsync(User user, CancellationToken cancellationToken);
+    // Returns false if a user with the same name + e-mail already exists
+    // (another request created it a moment ago)
+    Task<bool> TryAddAsync(User user, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

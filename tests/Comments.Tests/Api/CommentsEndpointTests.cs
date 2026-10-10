@@ -113,6 +113,22 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
     }
 
     [Fact]
+    public async Task Post_UnexpectedError_Returns500WithoutDetails()
+    {
+        _service.ErrorToThrow = new InvalidOperationException("secret: connection string is Server=prod;Password=123");
+        var client = _factory.CreateClient();
+
+        var response = await client.PostAsync("/api/comments", Form(ValidFields()));
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType!.MediaType);
+        Assert.Contains("An unexpected error occurred", body);
+        Assert.DoesNotContain("secret", body);
+        Assert.DoesNotContain("InvalidOperationException", body);
+    }
+
+    [Fact]
     public async Task Post_Json_Returns415()
     {
         var client = _factory.CreateClient();
@@ -200,7 +216,7 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
 
         public UploadedFile? LastFile { get; private set; }
 
-        public FieldValidationException? ErrorToThrow { get; set; }
+        public Exception? ErrorToThrow { get; set; }
 
         public Task<CommentResponse> CreateAsync(CreateCommentRequest request, UploadedFile? file, string? ipAddress, string? userAgent, CancellationToken cancellationToken)
         {

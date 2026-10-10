@@ -67,6 +67,18 @@ public class UserServiceTests
         Assert.Equal(0, _repository.SaveCount);
     }
 
+    [Fact]
+    public async Task GetOrCreate_SameUserCreatedByParallelRequest_ReturnsThatUser()
+    {
+        var winner = new User("Sasha1", "sasha@example.com", null);
+        _repository.CreatedByOtherRequest = winner;
+
+        var user = await _service.GetOrCreateAsync("Sasha1", "sasha@example.com", null, CancellationToken.None);
+
+        Assert.Same(winner, user);
+        Assert.Single(_repository.Users);
+    }
+
     // Simple in-memory repository, so the test doesn't need a database
     private class FakeUserRepository : IUserRepository
     {
@@ -83,11 +95,20 @@ public class UserServiceTests
             return Task.FromResult(user);
         }
 
-        public Task AddAsync(User user, CancellationToken cancellationToken)
+        // Set it to pretend another request inserts this user right before our insert
+        public User? CreatedByOtherRequest { get; set; }
+
+        public Task<bool> TryAddAsync(User user, CancellationToken cancellationToken)
         {
+            if (CreatedByOtherRequest is not null)
+            {
+                Users.Add(CreatedByOtherRequest);
+                return Task.FromResult(false);
+            }
+
             Users.Add(user);
             SaveCount++;
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public Task SaveChangesAsync(CancellationToken cancellationToken)

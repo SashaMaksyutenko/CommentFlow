@@ -2,7 +2,6 @@ using Comments.Api.Models;
 using Comments.Application.Attachments;
 using Comments.Application.Comments;
 using Comments.Application.Common;
-using Comments.Application.Validation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Comments.Api.Controllers;
@@ -42,6 +41,8 @@ public class CommentsController : ControllerBase
     // Sent as multipart/form-data: the form fields plus an optional "file".
     // [ApiController] returns 400 by itself when the request attributes fail,
     // so this method only runs for a valid request.
+    // Errors found later (wrong captcha, bad file) are thrown by the service
+    // and turned into 400 by GlobalExceptionHandler.
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxRequestSize)]
@@ -51,17 +52,8 @@ public class CommentsController : ControllerBase
         var userAgent = Request.Headers.UserAgent.ToString();
         var upload = form.File is null ? null : await ReadFileAsync(form.File, cancellationToken);
 
-        try
-        {
-            var comment = await _commentService.CreateAsync(form, upload, GetClientIp(), userAgent, cancellationToken);
-            return StatusCode(StatusCodes.Status201Created, comment);
-        }
-        catch (FieldValidationException ex)
-        {
-            // Same 400 format and field names ("CaptchaAnswer") as the automatic validation
-            ModelState.AddModelError(ex.Field, ex.Message);
-            return ValidationProblem(ModelState);
-        }
+        var comment = await _commentService.CreateAsync(form, upload, GetClientIp(), userAgent, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, comment);
     }
 
     // IFormFile is an ASP.NET type, the Application layer gets plain bytes

@@ -1,3 +1,4 @@
+using Comments.Api.ErrorHandling;
 using Comments.Api.HealthChecks;
 using Comments.Application.Attachments;
 using Comments.Application.Comments;
@@ -21,10 +22,17 @@ builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
 builder.Services.AddControllers();
 
+// Errors are returned in the standard "problem details" JSON format
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
 var app = builder.Build();
+
+// First in the pipeline, so it catches exceptions from everything below
+app.UseExceptionHandler();
 
 // Liveness: the API process is up. Runs no checks.
 app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
