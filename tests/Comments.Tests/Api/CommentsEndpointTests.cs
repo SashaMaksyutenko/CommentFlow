@@ -206,8 +206,65 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
         Assert.Equal(3, Assert.Single(reply.Replies).Id);
     }
 
+    [Fact]
+    public async Task GetReplies_VeryDeepTree_IsStillReturned()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/comments/{FakeCommentService.DeepCommentId}/replies");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains($"level {FakeCommentService.DeepLevels}", body);
+    }
+
+    [Fact]
+    public async Task AnyResponse_HasSecurityHeaders()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/comments");
+
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").Single());
+    }
+
+    [Fact]
+    public async Task Post_OverTheRateLimit_Returns429()
+    {
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.UseSetting("RateLimits:CommentsPerMinute", "2"))
+            .CreateClient();
+
+        var first = await client.PostAsync("/api/comments", Form(ValidFields()));
+        var second = await client.PostAsync("/api/comments", Form(ValidFields()));
+        var third = await client.PostAsync("/api/comments", Form(ValidFields()));
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, second.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+        Assert.Equal(2, _service.CallCount);
+    }
+
+    [Fact]
+    public async Task Get_IsNotRateLimited()
+    {
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.UseSetting("RateLimits:CommentsPerMinute", "1"))
+            .CreateClient();
+
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await client.GetAsync("/api/comments");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+    }
+
     private class FakeCommentService : ICommentService
     {
+        public const int DeepCommentId = 500;
+        public const int DeepLevels = 200;
+
         public int CallCount { get; private set; }
 
         public GetCommentsQuery? LastQuery { get; private set; }
@@ -238,9 +295,24 @@ public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program
             return Task.FromResult(new PagedResponse<CommentResponse>([], query.Page, 25, 0));
         }
 
-        // Comment 1 exists and has reply 2, which has reply 3
+        // Comment 1 exists and has reply 2, which has reply 3.
+        // Comment 500 has a chain of replies 200 levels deep.
         public Task<List<CommentResponse>?> GetRepliesAsync(int commentId, CancellationToken cancellationToken)
         {
+            if (commentId == DeepCommentId)
+            {
+                var first = new CommentResponse(DeepCommentId + 1, DeepCommentId, "A", "a@example.com", null, "level 1", DateTime.UtcNow);
+                var current = first;
+                for (var level = 2; level <= DeepLevels; level++)
+                {
+                    var next = new CommentResponse(DeepCommentId + level, current.Id, "A", "a@example.com", null, $"level {level}", DateTime.UtcNow);
+                    current.Replies.Add(next);
+                    current = next;
+                }
+
+                return Task.FromResult<List<CommentResponse>?>([first]);
+            }
+
             if (commentId != 1)
             {
                 return Task.FromResult<List<CommentResponse>?>(null);

@@ -1,5 +1,6 @@
 using Comments.Api.ErrorHandling;
 using Comments.Api.HealthChecks;
+using Comments.Api.RateLimiting;
 using Comments.Application.Attachments;
 using Comments.Application.Comments;
 using Comments.Application.Users;
@@ -20,11 +21,18 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddSingleton<ICommentTextSanitizer, CommentTextSanitizer>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // Default is 32, and every level of replies takes 2 (object + "replies" array),
+    // so a thread deeper than ~15 replies failed with 500. Now about 250 levels fit.
+    options.JsonSerializerOptions.MaxDepth = 512;
+});
 
 // Errors are returned in the standard "problem details" JSON format
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+builder.Services.AddApiRateLimiting(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
@@ -33,6 +41,18 @@ var app = builder.Build();
 
 // First in the pipeline, so it catches exceptions from everything below
 app.UseExceptionHandler();
+
+// Security headers for every response:
+// nosniff - the browser must not guess the content type (a .txt must never run as HTML),
+// DENY - the API can't be shown inside a frame on another site (clickjacking).
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.XContentTypeOptions = "nosniff";
+    context.Response.Headers.XFrameOptions = "DENY";
+    await next();
+});
+
+app.UseRateLimiter();
 
 // Liveness: the API process is up. Runs no checks.
 app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
@@ -61,12 +81,8 @@ app.UseStaticFiles(new StaticFileOptions
     ContentTypeProvider = uploadContentTypes,
     OnPrepareResponse = context =>
     {
-        var response = context.Context.Response;
-
-        // The browser must not guess the type itself (a .txt must never run as HTML)
-        response.Headers.XContentTypeOptions = "nosniff";
-
         // Text files are saved as UTF-8, say so or Cyrillic may look broken
+        var response = context.Context.Response;
         if (response.ContentType == "text/plain")
         {
             response.ContentType = "text/plain; charset=utf-8";

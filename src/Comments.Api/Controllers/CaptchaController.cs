@@ -1,5 +1,7 @@
+using Comments.Api.RateLimiting;
 using Comments.Application.Captcha;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Comments.Api.Controllers;
 
@@ -15,6 +17,7 @@ public class CaptchaController : ControllerBase
     }
 
     [HttpGet]
+    [EnableRateLimiting(RateLimitingExtensions.CaptchaPolicy)]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<ActionResult<CaptchaResponse>> Get(CancellationToken cancellationToken)
     {

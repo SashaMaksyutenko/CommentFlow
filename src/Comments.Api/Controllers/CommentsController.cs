@@ -1,8 +1,10 @@
 using Comments.Api.Models;
+using Comments.Api.RateLimiting;
 using Comments.Application.Attachments;
 using Comments.Application.Comments;
 using Comments.Application.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Comments.Api.Controllers;
 
@@ -44,6 +46,7 @@ public class CommentsController : ControllerBase
     // Errors found later (wrong captcha, bad file) are thrown by the service
     // and turned into 400 by GlobalExceptionHandler.
     [HttpPost]
+    [EnableRateLimiting(RateLimitingExtensions.CommentsPolicy)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(MaxRequestSize)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestSize)]

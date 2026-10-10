@@ -1,4 +1,5 @@
 using Comments.Application.Users;
+using Comments.Application.Validation;
 using Comments.Domain.Entities;
 
 namespace Comments.Tests.Application;
@@ -20,7 +21,7 @@ public class UserServiceTests
 
         Assert.Single(_repository.Users);
         Assert.Equal("Sasha1", user.UserName);
-        Assert.Equal("https://example.com", user.HomePage);
+        Assert.Equal("https://example.com/", user.HomePage);
     }
 
     [Fact]
@@ -52,7 +53,7 @@ public class UserServiceTests
 
         var user = await _service.GetOrCreateAsync("Sasha1", "sasha@example.com", "https://new.com", CancellationToken.None);
 
-        Assert.Equal("https://new.com", user.HomePage);
+        Assert.Equal("https://new.com/", user.HomePage);
         Assert.Equal(1, _repository.SaveCount);
     }
 
@@ -65,6 +66,28 @@ public class UserServiceTests
 
         Assert.Equal("https://old.com", user.HomePage);
         Assert.Equal(0, _repository.SaveCount);
+    }
+
+    [Fact]
+    public async Task GetOrCreate_HomePageWithHtmlCharacters_IsSavedEscaped()
+    {
+        var user = await _service.GetOrCreateAsync(
+            "Sasha1", "sasha@example.com", "https://example.com/\"><script>alert(1)</script>", CancellationToken.None);
+
+        Assert.Equal("https://example.com/%22%3E%3Cscript%3Ealert(1)%3C/script%3E", user.HomePage);
+    }
+
+    [Fact]
+    public async Task GetOrCreate_HomePageTooLongAfterEscaping_Throws()
+    {
+        // 1000 spaces fit into the 2048 limit, but each one becomes "%20" (3 characters)
+        var homePage = "https://example.com/" + new string(' ', 1000) + "x";
+
+        var ex = await Assert.ThrowsAsync<FieldValidationException>(() =>
+            _service.GetOrCreateAsync("Sasha1", "sasha@example.com", homePage, CancellationToken.None));
+
+        Assert.Equal("HomePage", ex.Field);
+        Assert.Empty(_repository.Users);
     }
 
     [Fact]

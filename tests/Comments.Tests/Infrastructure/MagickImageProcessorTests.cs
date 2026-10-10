@@ -98,9 +98,34 @@ public class MagickImageProcessorTests
     }
 
     [Fact]
-    public void HugeImage_IsRejectedBeforeDecoding()
+    public void ImageWithTooLongSide_IsRejectedBeforeDecoding()
     {
         var content = CreateImage(MagickFormat.Png, MagickImageProcessor.MaxSourceSide + 1, 10);
+
+        Assert.False(_processor.TryProcess(content, out _, out var error));
+        Assert.Contains("too large", error);
+    }
+
+    [Fact]
+    public void ImageWithTooManyPixels_IsRejected()
+    {
+        // Each side is allowed, but 6000 x 4500 = 27 megapixels is over the 25 MP limit
+        var content = CreateImage(MagickFormat.Png, 6000, 4500);
+
+        Assert.False(_processor.TryProcess(content, out _, out var error));
+        Assert.Contains("too large", error);
+    }
+
+    [Fact]
+    public void AnimatedGif_AllFramesAreCountedForTheLimit()
+    {
+        // One frame is small (1 MP), but 30 of them need memory for 30 MP
+        using var source = new MagickImageCollection();
+        for (var i = 0; i < 30; i++)
+        {
+            source.Add(new MagickImage(MagickColors.Red, 1000, 1000));
+        }
+        var content = source.ToByteArray(MagickFormat.Gif);
 
         Assert.False(_processor.TryProcess(content, out _, out var error));
         Assert.Contains("too large", error);

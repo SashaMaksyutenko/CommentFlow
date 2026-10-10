@@ -1,3 +1,4 @@
+using Comments.Application.Validation;
 using Comments.Domain.Entities;
 
 namespace Comments.Application.Users;
@@ -15,7 +16,7 @@ public class UserService : IUserService
     {
         userName = userName.Trim();
         email = email.Trim();
-        homePage = string.IsNullOrWhiteSpace(homePage) ? null : homePage.Trim();
+        homePage = NormalizeHomePage(homePage);
 
         var user = await _users.FindByNameAndEmailAsync(userName, email, cancellationToken);
 
@@ -40,5 +41,23 @@ public class UserService : IUserService
         }
 
         return user;
+    }
+
+    // Saves the URL in its escaped form: quotes, spaces and <> become %22, %20, %3C...
+    // So even a careless client can't get broken HTML out of a home page address.
+    private static string? NormalizeHomePage(string? homePage)
+    {
+        if (string.IsNullOrWhiteSpace(homePage) || !Uri.TryCreate(homePage.Trim(), UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        // Escaping can make the address longer than the column allows
+        if (uri.AbsoluteUri.Length > User.HomePageMaxLength)
+        {
+            throw new FieldValidationException("HomePage", "Home page address is too long.");
+        }
+
+        return uri.AbsoluteUri;
     }
 }

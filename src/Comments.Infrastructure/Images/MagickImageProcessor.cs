@@ -8,8 +8,10 @@ public class MagickImageProcessor : IImageProcessor
     public const int MaxWidth = 320;
     public const int MaxHeight = 240;
 
-    // Bigger pictures could eat all memory while decoding ("image bomb")
+    // Bigger pictures could eat all memory while decoding ("image bomb").
+    // A decoded pixel takes 4 bytes, so 25 megapixels is about 100 MB of memory.
     public const int MaxSourceSide = 8000;
+    public const int MaxTotalPixels = 25_000_000;
 
     public bool TryProcess(byte[] content, out ProcessedImage? image, out string error)
     {
@@ -29,10 +31,9 @@ public class MagickImageProcessor : IImageProcessor
 
         try
         {
-            var info = new MagickImageInfo(content, settings);
-            if (info.Width > MaxSourceSide || info.Height > MaxSourceSide)
+            if (!HasAllowedSize(content, settings))
             {
-                error = $"Image is too large, max {MaxSourceSide}x{MaxSourceSide} pixels.";
+                error = $"Image is too large, max {MaxSourceSide} pixels per side and {MaxTotalPixels / 1_000_000} megapixels in total.";
                 return false;
             }
 
@@ -70,6 +71,31 @@ public class MagickImageProcessor : IImageProcessor
             error = "The image file is damaged.";
             return false;
         }
+    }
+
+    // Ping reads only the headers (sizes), not the pixels, so it is cheap even for a huge file.
+    // All frames are counted: an animated GIF needs memory for every frame.
+    private static bool HasAllowedSize(byte[] content, MagickReadSettings settings)
+    {
+        using var headers = new MagickImageCollection();
+        headers.Ping(content, settings);
+
+        long totalPixels = 0;
+        foreach (var frame in headers)
+        {
+            // A GIF frame can be smaller than the whole picture, Page is the full canvas
+            var width = Math.Max(frame.Width, frame.Page.Width);
+            var height = Math.Max(frame.Height, frame.Page.Height);
+
+            if (width > MaxSourceSide || height > MaxSourceSide)
+            {
+                return false;
+            }
+
+            totalPixels += (long)width * height;
+        }
+
+        return totalPixels <= MaxTotalPixels;
     }
 
     // Checks the first bytes ("magic numbers") instead of trusting the file extension

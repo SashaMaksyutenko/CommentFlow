@@ -41,4 +41,20 @@ public class CaptchaEndpointTests : IClassFixture<WebApplicationFactory<Program>
 
         Assert.NotEqual(first!.Id, second!.Id);
     }
+
+    [Fact]
+    public async Task Get_OverTheRateLimit_Returns429()
+    {
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.UseSetting("RateLimits:CaptchaPerMinute", "2"))
+            .CreateClient();
+
+        var first = await client.GetAsync("/api/captcha");
+        var second = await client.GetAsync("/api/captcha");
+        var third = await client.GetAsync("/api/captcha");
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+    }
 }
