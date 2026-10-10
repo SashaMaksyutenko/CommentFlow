@@ -15,13 +15,14 @@ public class CommentServiceTests
     private readonly FakeUserService _users = new();
     private readonly FakeCommentRepository _comments = new();
     private readonly FakeAttachmentService _attachments = new();
+    private readonly FakeCommentCache _cache = new();
     private readonly CommentService _service;
 
     private static readonly UploadedFile TextFile = new("notes.txt", [72, 105]);
 
     public CommentServiceTests()
     {
-        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments);
+        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments, _cache);
     }
 
     private static CreateCommentRequest ValidRequest() => new()
@@ -265,6 +266,76 @@ public class CommentServiceTests
         Assert.Equal(0, _comments.LastSkip);
         Assert.Equal(CommentSortField.CreatedAt, _comments.LastSortBy);
         Assert.Equal(SortDirection.Desc, _comments.LastDirection);
+    }
+
+    [Fact]
+    public async Task GetTopLevel_PageNotInCache_ReadsDatabaseAndStoresPage()
+    {
+        var query = new GetCommentsQuery();
+
+        var result = await _service.GetTopLevelAsync(query, CancellationToken.None);
+
+        Assert.Equal(0, _comments.LastSkip); // the repository was called
+        Assert.Same(result, _cache.StoredPage);
+        Assert.Same(query, _cache.StoredQuery);
+    }
+
+    [Fact]
+    public async Task GetTopLevel_PageInCache_IsReturnedWithoutDatabase()
+    {
+        var cachedPage = new PagedResponse<CommentResponse>([], 1, 25, 0);
+        _cache.PageToReturn = cachedPage;
+
+        var result = await _service.GetTopLevelAsync(new GetCommentsQuery(), CancellationToken.None);
+
+        Assert.Same(cachedPage, result);
+        Assert.Equal(-1, _comments.LastSkip); // the repository was not called
+    }
+
+    [Fact]
+    public async Task Create_NewComment_InvalidatesCache()
+    {
+        await _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None);
+
+        Assert.Equal(1, _cache.InvalidateCount);
+    }
+
+    [Fact]
+    public async Task Create_Rejected_DoesNotInvalidateCache()
+    {
+        _captcha.IsValid = false;
+
+        await Assert.ThrowsAsync<FieldValidationException>(() =>
+            _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None));
+
+        Assert.Equal(0, _cache.InvalidateCount);
+    }
+
+    private class FakeCommentCache : ICommentCache
+    {
+        public PagedResponse<CommentResponse>? PageToReturn { get; set; }
+
+        public PagedResponse<CommentResponse>? StoredPage { get; private set; }
+
+        public GetCommentsQuery? StoredQuery { get; private set; }
+
+        public int InvalidateCount { get; private set; }
+
+        public Task<PagedResponse<CommentResponse>?> GetPageAsync(GetCommentsQuery query, CancellationToken cancellationToken) =>
+            Task.FromResult(PageToReturn);
+
+        public Task SetPageAsync(GetCommentsQuery query, PagedResponse<CommentResponse> page, CancellationToken cancellationToken)
+        {
+            StoredQuery = query;
+            StoredPage = page;
+            return Task.CompletedTask;
+        }
+
+        public Task InvalidateAsync(CancellationToken cancellationToken)
+        {
+            InvalidateCount++;
+            return Task.CompletedTask;
+        }
     }
 
     private class FakeCaptchaService : ICaptchaService

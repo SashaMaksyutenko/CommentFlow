@@ -17,19 +17,22 @@ public class CommentService : ICommentService
     private readonly ICommentRepository _comments;
     private readonly ICommentTextSanitizer _sanitizer;
     private readonly IAttachmentService _attachmentService;
+    private readonly ICommentCache _cache;
 
     public CommentService(
         ICaptchaService captchaService,
         IUserService userService,
         ICommentRepository comments,
         ICommentTextSanitizer sanitizer,
-        IAttachmentService attachmentService)
+        IAttachmentService attachmentService,
+        ICommentCache cache)
     {
         _captchaService = captchaService;
         _userService = userService;
         _comments = comments;
         _sanitizer = sanitizer;
         _attachmentService = attachmentService;
+        _cache = cache;
     }
 
     public async Task<CommentResponse> CreateAsync(
@@ -62,6 +65,8 @@ public class CommentService : ICommentService
         // After the captcha on purpose: resizing images is heavy work, bots shouldn't trigger it
         var attachment = file is null ? null : await _attachmentService.SaveAsync(file, cancellationToken);
 
+        CommentResponse response;
+
         try
         {
             var user = await _userService.GetOrCreateAsync(request.UserName, request.Email, request.HomePage, cancellationToken);
@@ -81,7 +86,7 @@ public class CommentService : ICommentService
             // Saves the comment and its attachment row together
             await _comments.AddAsync(comment, cancellationToken);
 
-            return CommentResponse.From(comment, user);
+            response = CommentResponse.From(comment, user);
         }
         catch
         {
@@ -93,18 +98,32 @@ public class CommentService : ICommentService
 
             throw;
         }
+
+        // Cached pages are now outdated: there is a new comment, and the author's home page may have changed
+        await _cache.InvalidateAsync(cancellationToken);
+
+        return response;
     }
 
     public async Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken)
     {
+        var cached = await _cache.GetPageAsync(query, cancellationToken);
+        if (cached is not null)
+        {
+            return cached;
+        }
+
         var skip = (query.Page - 1) * PageSize;
 
         var (comments, totalCount) = await _comments.GetTopLevelPageAsync(
             query.SortBy, query.SortDirection, skip, PageSize, cancellationToken);
 
         var items = comments.Select(c => CommentResponse.From(c, c.User)).ToList();
+        var page = new PagedResponse<CommentResponse>(items, query.Page, PageSize, totalCount);
 
-        return new PagedResponse<CommentResponse>(items, query.Page, PageSize, totalCount);
+        await _cache.SetPageAsync(query, page, cancellationToken);
+
+        return page;
     }
 
     public async Task<List<CommentResponse>?> GetRepliesAsync(int commentId, CancellationToken cancellationToken)

@@ -2,6 +2,7 @@ using Comments.Application.Attachments;
 using Comments.Application.Captcha;
 using Comments.Application.Comments;
 using Comments.Application.Users;
+using Comments.Infrastructure.Caching;
 using Comments.Infrastructure.Captcha;
 using Comments.Infrastructure.Files;
 using Comments.Infrastructure.Images;
@@ -49,6 +50,8 @@ public static class DependencyInjection
                 options.InstanceName = "comments:";
             });
         }
+
+        services.AddSingleton<ICommentCache, DistributedCommentCache>();
 
         services.AddSingleton<ICaptchaImageGenerator, CaptchaImageGenerator>();
         services.AddSingleton<ICaptchaService, CaptchaService>();
