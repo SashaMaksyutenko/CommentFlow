@@ -4,6 +4,8 @@ using Comments.Application.Comments;
 using Comments.Application.Users;
 using Comments.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +33,37 @@ app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false }
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
+});
+
+// Uploaded files are served from /uploads/<generated name>.
+// Only our four file types get a content type, anything else in the folder returns 404.
+Directory.CreateDirectory(uploadsPath);
+var uploadContentTypes = new FileExtensionContentTypeProvider(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+{
+    [".jpg"] = "image/jpeg",
+    [".png"] = "image/png",
+    [".gif"] = "image/gif",
+    [".txt"] = "text/plain"
+});
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = AttachmentResponse.UrlPrefix,
+    ContentTypeProvider = uploadContentTypes,
+    OnPrepareResponse = context =>
+    {
+        var response = context.Context.Response;
+
+        // The browser must not guess the type itself (a .txt must never run as HTML)
+        response.Headers.XContentTypeOptions = "nosniff";
+
+        // Text files are saved as UTF-8, say so or Cyrillic may look broken
+        if (response.ContentType == "text/plain")
+        {
+            response.ContentType = "text/plain; charset=utf-8";
+        }
+    }
 });
 
 app.MapControllers();

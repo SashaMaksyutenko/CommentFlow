@@ -37,6 +37,7 @@ public class CommentRepository : ICommentRepository
             var level = await _dbContext.Comments
                 .AsNoTracking()
                 .Include(c => c.User)
+                .Include(c => c.Attachment)
                 .Where(c => c.ParentId != null && parentIds.Contains(c.ParentId.Value))
                 .ToListAsync(cancellationToken);
 
@@ -63,6 +64,7 @@ public class CommentRepository : ICommentRepository
 
         var items = await topLevel
             .Include(c => c.User)
+            .Include(c => c.Attachment)
             .ApplySorting(sortBy, direction)
             .Skip(skip)
             .Take(take)

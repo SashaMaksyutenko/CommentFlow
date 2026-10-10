@@ -160,11 +160,33 @@ public class CommentServiceTests
     [Fact]
     public async Task Create_WithFile_SavesFileAndAttachesIt()
     {
-        await _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None);
+        var result = await _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None);
 
         var saved = Assert.Single(_comments.Added);
         Assert.NotNull(saved.Attachment);
         Assert.Equal("notes.txt", saved.Attachment.OriginalFileName);
+
+        Assert.Equal("/uploads/stored.txt", result.Attachment!.Url);
+        Assert.Equal("notes.txt", result.Attachment.FileName);
+        Assert.Equal("Text", result.Attachment.Type);
+        Assert.Equal("text/plain", result.Attachment.ContentType);
+        Assert.Equal(2, result.Attachment.Size);
+    }
+
+    [Fact]
+    public async Task GetTopLevel_CommentWithFile_ReturnsAttachment()
+    {
+        var user = TestData.CreateUser(1, "Sasha1", "sasha@example.com");
+        var comment = TestData.CreateTopLevelComment(1, user, DateTime.UtcNow);
+        comment.Attach(new Attachment("cat.png", "abc.png", "image/png", 100, AttachmentType.Image));
+        _comments.Page = [comment];
+        _comments.TotalCount = 1;
+
+        var result = await _service.GetTopLevelAsync(new GetCommentsQuery(), CancellationToken.None);
+
+        var attachment = result.Items[0].Attachment!;
+        Assert.Equal("/uploads/abc.png", attachment.Url);
+        Assert.Equal("Image", attachment.Type);
     }
 
     [Fact]
