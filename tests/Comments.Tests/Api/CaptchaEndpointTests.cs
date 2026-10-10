@@ -1,19 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
 using Comments.Api.Controllers;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Comments.Tests.Api;
 
-public class CaptchaEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class CaptchaEndpointTests : IClassFixture<ApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly ApiFactory _factory;
 
-    public CaptchaEndpointTests(WebApplicationFactory<Program> factory)
+    public CaptchaEndpointTests(ApiFactory factory)
     {
-        // Captcha doesn't use the DB, any connection string works
-        _factory = factory.WithWebHostBuilder(builder =>
-            builder.UseSetting("ConnectionStrings:CommentsDb", "Server=127.0.0.1,1;Database=CommentsDb"));
+        _factory = factory;
     }
 
     [Fact]

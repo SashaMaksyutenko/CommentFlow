@@ -17,5 +17,18 @@ services:
       retries: 10
       start_period: 30s
 
+  redis:
+    image: redis:8-alpine
+    # Used only as a cache: no saving to disk, and old keys are dropped when 128 MB is full
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      # Only from this machine: Redis has no password here
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
 volumes:
   sqlserver-data:

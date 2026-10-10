@@ -14,7 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Relative path is resolved from the project folder, an absolute one (Docker volume) is used as is
 var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["FileStorage:RootPath"] ?? "uploads");
 
-builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("CommentsDb"), uploadsPath);
+builder.Services.AddInfrastructure(
+    builder.Configuration.GetConnectionString("CommentsDb"),
+    builder.Configuration.GetConnectionString("Redis"),
+    uploadsPath);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICommentService, CommentService>();

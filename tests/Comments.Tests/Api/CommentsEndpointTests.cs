@@ -11,19 +11,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Comments.Tests.Api;
 
-public class CommentsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class CommentsEndpointTests : IClassFixture<ApiFactory>
 {
     private readonly FakeCommentService _service = new();
     private readonly WebApplicationFactory<Program> _factory;
 
-    public CommentsEndpointTests(WebApplicationFactory<Program> factory)
+    public CommentsEndpointTests(ApiFactory factory)
     {
         // The real service is replaced, so no DB or captcha is needed here
         _factory = factory.WithWebHostBuilder(builder =>
-        {
-            builder.UseSetting("ConnectionStrings:CommentsDb", "Server=127.0.0.1,1;Database=CommentsDb");
-            builder.ConfigureTestServices(services => services.AddSingleton<ICommentService>(_service));
-        });
+            builder.ConfigureTestServices(services => services.AddSingleton<ICommentService>(_service)));
     }
 
     private static Dictionary<string, string> ValidFields() => new()

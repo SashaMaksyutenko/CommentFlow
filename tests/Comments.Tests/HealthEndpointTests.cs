@@ -1,19 +1,16 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Comments.Tests.Api;
 
 namespace Comments.Tests;
 
-public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class HealthEndpointTests : IClassFixture<ApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    // ApiFactory points to a DB that is never reachable
+    private readonly ApiFactory _factory;
 
-    public HealthEndpointTests(WebApplicationFactory<Program> factory)
+    public HealthEndpointTests(ApiFactory factory)
     {
-        // Nothing listens on port 1, so the DB is always unreachable here
-        _factory = factory.WithWebHostBuilder(builder =>
-            builder.UseSetting(
-                "ConnectionStrings:CommentsDb",
-                "Server=127.0.0.1,1;Database=CommentsDb;User Id=sa;Password=unused;Connect Timeout=1;TrustServerCertificate=True"));
+        _factory = factory;
     }
 
     [Fact]

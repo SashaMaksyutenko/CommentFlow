@@ -1,15 +1,15 @@
 using System.Net;
 using System.Text;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Comments.Tests.Api;
 
-public class UploadsEndpointTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
+public class UploadsEndpointTests : IClassFixture<ApiFactory>, IDisposable
 {
     private readonly string _uploads = Path.Combine(Path.GetTempPath(), "comments-uploads-" + Guid.NewGuid().ToString("N"));
     private readonly HttpClient _client;
 
-    public UploadsEndpointTests(WebApplicationFactory<Program> factory)
+    public UploadsEndpointTests(ApiFactory factory)
     {
         Directory.CreateDirectory(_uploads);
         File.WriteAllBytes(Path.Combine(_uploads, "pic.png"), [1, 2, 3]);
@@ -17,11 +17,9 @@ public class UploadsEndpointTests : IClassFixture<WebApplicationFactory<Program>
         File.WriteAllText(Path.Combine(_uploads, "page.html"), "<script>alert(1)</script>");
 
         // Point the API to a temp folder instead of the real uploads folder
-        _client = factory.WithWebHostBuilder(builder =>
-        {
-            builder.UseSetting("ConnectionStrings:CommentsDb", "Server=127.0.0.1,1;Database=CommentsDb");
-            builder.UseSetting("FileStorage:RootPath", _uploads);
-        }).CreateClient();
+        _client = factory
+            .WithWebHostBuilder(builder => builder.UseSetting("FileStorage:RootPath", _uploads))
+            .CreateClient();
     }
 
     public void Dispose()
