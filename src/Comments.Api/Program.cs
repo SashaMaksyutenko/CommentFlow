@@ -24,6 +24,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddSingleton<ICommentTextSanitizer, CommentTextSanitizer>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
+builder.Services.AddScoped<IAttachmentProcessingService, AttachmentProcessingService>();
 
 // Finds all event handlers (INotificationHandler) in the Application project
 builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblyContaining<CommentCreated>());

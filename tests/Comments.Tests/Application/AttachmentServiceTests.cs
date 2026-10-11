@@ -2,13 +2,14 @@ using System.Text;
 using Comments.Application.Attachments;
 using Comments.Application.Validation;
 using Comments.Domain.Enums;
+using Comments.Tests.Fakes;
 
 namespace Comments.Tests.Application;
 
 public class AttachmentServiceTests
 {
     private readonly FakeImageProcessor _images = new();
-    private readonly FakeStorage _storage = new();
+    private readonly FakeFileStorage _storage = new();
     private readonly AttachmentService _service;
 
     public AttachmentServiceTests()
@@ -94,24 +95,29 @@ public class AttachmentServiceTests
     }
 
     [Fact]
-    public async Task Image_IsProcessedAndStoredWithRealExtension()
+    public async Task Image_OriginalIsKeptForProcessing_NotServedYet()
     {
-        _images.Result = new ProcessedImage([1, 2, 3], ".png", "image/png", 320, 240);
-
-        // Uploaded as .jpg, but the processor says it's really a PNG
+        // Uploaded as .jpg, but the quick check says it's really a PNG
         var attachment = await _service.SaveAsync(new UploadedFile("photo.JPG", [9, 9, 9]), CancellationToken.None);
 
         Assert.Equal(AttachmentType.Image, attachment.Type);
+        Assert.Equal(AttachmentStatus.Processing, attachment.Status);
         Assert.Equal("image/png", attachment.ContentType);
         Assert.EndsWith(".png", attachment.StoredFileName);
-        Assert.Equal(3, attachment.Size);
-        Assert.Equal([1, 2, 3], _storage.Files[attachment.StoredFileName]);
+
+        // Only the untouched original exists, under the name the API doesn't serve
+        var storedFile = Assert.Single(_storage.Files);
+        Assert.Equal(attachment.StoredFileName + ".upload", storedFile.Key);
+        Assert.Equal([9, 9, 9], storedFile.Value);
+
+        // The heavy processing was not started here
+        Assert.Equal(0, _images.ProcessCount);
     }
 
     [Fact]
-    public async Task Image_ProcessorError_IsReturnedToUser()
+    public async Task Image_QuickCheckError_IsReturnedToUser()
     {
-        _images.Error = "The file is not a JPG, GIF or PNG image.";
+        _images.Format = null;
 
         var ex = await SaveFails("fake.png", [1, 2, 3]);
 
@@ -120,11 +126,24 @@ public class AttachmentServiceTests
     }
 
     [Fact]
-    public async Task Image_Over5Mb_IsRejectedWithoutProcessing()
+    public async Task Image_Over5Mb_IsRejectedWithoutEvenChecking()
     {
         await SaveFails("huge.png", new byte[AttachmentService.MaxImageSize + 1]);
 
-        Assert.Equal(0, _images.CallCount);
+        Assert.Equal(0, _images.InspectCount);
+    }
+
+    [Fact]
+    public async Task DeleteFile_RemovesFinalFileAndWaitingOriginal()
+    {
+        var image = await _service.SaveAsync(new UploadedFile("photo.png", [9, 9, 9]), CancellationToken.None);
+        var text = await _service.SaveAsync(new UploadedFile("notes.txt", Text("hi")), CancellationToken.None);
+        Assert.Equal(2, _storage.Files.Count);
+
+        await _service.DeleteFileAsync(image, CancellationToken.None);
+        await _service.DeleteFileAsync(text, CancellationToken.None);
+
+        Assert.Empty(_storage.Files);
     }
 
     [Theory]
@@ -135,46 +154,5 @@ public class AttachmentServiceTests
         var attachment = await _service.SaveAsync(new UploadedFile(uploadedName, Text("hi")), CancellationToken.None);
 
         Assert.Equal(expected, attachment.OriginalFileName);
-    }
-
-    private class FakeImageProcessor : IImageProcessor
-    {
-        public ProcessedImage? Result { get; set; }
-
-        public string Error { get; set; } = "";
-
-        public int CallCount { get; private set; }
-
-        public bool TryProcess(byte[] content, out ProcessedImage? image, out string error)
-        {
-            CallCount++;
-            image = Result;
-            error = Error;
-            return Result is not null;
-        }
-
-        // Not used by AttachmentService yet
-        public bool TryInspect(byte[] content, out ImageFormatInfo? format, out string error) =>
-            throw new NotSupportedException();
-    }
-
-    private class FakeStorage : IFileStorage
-    {
-        public Dictionary<string, byte[]> Files { get; } = [];
-
-        public Task SaveAsync(string fileName, byte[] content, CancellationToken cancellationToken)
-        {
-            Files[fileName] = content;
-            return Task.CompletedTask;
-        }
-
-        public Task<byte[]?> ReadAsync(string fileName, CancellationToken cancellationToken) =>
-            Task.FromResult(Files.GetValueOrDefault(fileName));
-
-        public Task DeleteAsync(string fileName, CancellationToken cancellationToken)
-        {
-            Files.Remove(fileName);
-            return Task.CompletedTask;
-        }
     }
 }

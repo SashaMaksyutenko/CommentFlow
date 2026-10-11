@@ -33,6 +33,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddScoped<IAttachmentRepository, AttachmentRepository>();
 
         // Both register the same IDistributedCache interface, so the code that uses the cache
         // (captcha) doesn't know which one it got.

@@ -5,6 +5,7 @@ using Comments.Application.Common;
 using Comments.Application.Users;
 using Comments.Application.Validation;
 using Comments.Domain.Entities;
+using Comments.Domain.Enums;
 using MediatR;
 
 namespace Comments.Application.Comments;
@@ -19,6 +20,7 @@ public class CommentService : ICommentService
     private readonly ICommentRepository _comments;
     private readonly ICommentTextSanitizer _sanitizer;
     private readonly IAttachmentService _attachmentService;
+    private readonly IAttachmentProcessingService _attachmentProcessing;
     private readonly ICommentCache _cache;
     private readonly IPublisher _publisher;
 
@@ -28,6 +30,7 @@ public class CommentService : ICommentService
         ICommentRepository comments,
         ICommentTextSanitizer sanitizer,
         IAttachmentService attachmentService,
+        IAttachmentProcessingService attachmentProcessing,
         ICommentCache cache,
         IPublisher publisher)
     {
@@ -36,6 +39,7 @@ public class CommentService : ICommentService
         _comments = comments;
         _sanitizer = sanitizer;
         _attachmentService = attachmentService;
+        _attachmentProcessing = attachmentProcessing;
         _cache = cache;
         _publisher = publisher;
     }
@@ -67,16 +71,17 @@ public class CommentService : ICommentService
                 "The comment you are replying to does not exist.");
         }
 
-        // After the captcha on purpose: resizing images is heavy work, bots shouldn't trigger it
+        // After the captcha on purpose: bots shouldn't be able to fill the disk with files
         var attachment = file is null ? null : await _attachmentService.SaveAsync(file, cancellationToken);
 
-        CommentResponse response;
+        User user;
+        Comment comment;
 
         try
         {
-            var user = await _userService.GetOrCreateAsync(request.UserName, request.Email, request.HomePage, cancellationToken);
+            user = await _userService.GetOrCreateAsync(request.UserName, request.Email, request.HomePage, cancellationToken);
 
-            var comment = new Comment(
+            comment = new Comment(
                 user.Id,
                 request.ParentId,
                 text,
@@ -90,8 +95,6 @@ public class CommentService : ICommentService
 
             // Saves the comment and its attachment row together
             await _comments.AddAsync(comment, cancellationToken);
-
-            response = CommentResponse.From(comment, user);
         }
         catch
         {
@@ -103,6 +106,15 @@ public class CommentService : ICommentService
 
             throw;
         }
+
+        // An image is saved as "Processing" and still has to be decoded and resized.
+        // For now it is done right here, inside the request.
+        if (attachment?.Status == AttachmentStatus.Processing)
+        {
+            await _attachmentProcessing.ProcessAsync(attachment.Id, cancellationToken);
+        }
+
+        var response = CommentResponse.From(comment, user);
 
         // Tell everyone interested (cache, later live updates) that a comment was created
         await _publisher.Publish(new CommentCreated(response), cancellationToken);

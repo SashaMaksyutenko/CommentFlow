@@ -17,15 +17,17 @@ public class CommentServiceTests
     private readonly FakeUserService _users = new();
     private readonly FakeCommentRepository _comments = new();
     private readonly FakeAttachmentService _attachments = new();
+    private readonly FakeProcessingService _processing = new();
     private readonly FakeCommentCache _cache = new();
     private readonly FakePublisher _publisher = new();
     private readonly CommentService _service;
 
     private static readonly UploadedFile TextFile = new("notes.txt", [72, 105]);
+    private static readonly UploadedFile ImageFile = new("photo.png", [9, 9, 9]);
 
     public CommentServiceTests()
     {
-        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments, _cache, _publisher);
+        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments, _processing, _cache, _publisher);
     }
 
     private static CreateCommentRequest ValidRequest() => new()
@@ -192,6 +194,49 @@ public class CommentServiceTests
         var attachment = result.Items[0].Attachment!;
         Assert.Equal("/uploads/abc.png", attachment.Url);
         Assert.Equal("Image", attachment.Type);
+    }
+
+    [Fact]
+    public async Task Create_WithImage_ProcessesItAfterTheCommentIsSaved()
+    {
+        var savedCommentsAtProcessing = -1;
+        _processing.OnProcess = () => savedCommentsAtProcessing = _comments.Added.Count;
+
+        await _service.CreateAsync(ValidRequest(), ImageFile, null, null, CancellationToken.None);
+
+        Assert.Equal([FakeAttachmentService.SavedAttachmentId], _processing.ProcessedIds);
+        Assert.Equal(1, savedCommentsAtProcessing);
+    }
+
+    [Fact]
+    public async Task Create_WithImage_ResponseHasTheStatusAfterProcessing()
+    {
+        _processing.OnProcess = () => _attachments.Last!.MarkReady(3);
+
+        var result = await _service.CreateAsync(ValidRequest(), ImageFile, null, null, CancellationToken.None);
+
+        Assert.Equal("Ready", result.Attachment!.Status);
+        Assert.Equal(3, result.Attachment.Size);
+    }
+
+    [Fact]
+    public async Task Create_WithTextFile_NeedsNoProcessing()
+    {
+        await _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None);
+
+        Assert.Empty(_processing.ProcessedIds);
+    }
+
+    [Fact]
+    public async Task Create_WithImage_DatabaseFails_NothingIsProcessed()
+    {
+        _comments.ThrowOnAdd = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.CreateAsync(ValidRequest(), ImageFile, null, null, CancellationToken.None));
+
+        Assert.Empty(_processing.ProcessedIds);
+        Assert.Equal(1, _attachments.DeleteCount);
     }
 
     [Fact]
@@ -464,12 +509,37 @@ public class CommentServiceTests
             }
 
             SaveCount++;
-            return Task.FromResult(new Attachment(file.FileName, "stored.txt", "text/plain", file.Content.Length, AttachmentType.Text));
+
+            // Like the real service: text is ready at once, an image waits for processing
+            Last = file.FileName.EndsWith(".txt")
+                ? new Attachment(file.FileName, "stored.txt", "text/plain", file.Content.Length, AttachmentType.Text)
+                : new Attachment(file.FileName, "stored.png", "image/png", file.Content.Length, AttachmentType.Image, AttachmentStatus.Processing);
+
+            return Task.FromResult(Last.WithId(SavedAttachmentId));
         }
+
+        public const int SavedAttachmentId = 7;
+
+        public Attachment? Last { get; private set; }
 
         public Task DeleteFileAsync(Attachment attachment, CancellationToken cancellationToken)
         {
             DeleteCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private class FakeProcessingService : IAttachmentProcessingService
+    {
+        public List<int> ProcessedIds { get; } = [];
+
+        // Lets a test do something at the moment of processing
+        public Action? OnProcess { get; set; }
+
+        public Task ProcessAsync(int attachmentId, CancellationToken cancellationToken)
+        {
+            ProcessedIds.Add(attachmentId);
+            OnProcess?.Invoke();
             return Task.CompletedTask;
         }
     }

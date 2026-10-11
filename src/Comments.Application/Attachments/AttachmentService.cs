@@ -35,7 +35,12 @@ public class AttachmentService : IAttachmentService
         if (extension == ".txt")
         {
             ValidateText(file.Content);
-            return await StoreAsync(originalName, ".txt", "text/plain", file.Content, AttachmentType.Text, cancellationToken);
+
+            // Text needs no processing, it is ready right away
+            var storedName = NewStoredName(".txt");
+            await _storage.SaveAsync(storedName, file.Content, cancellationToken);
+
+            return new Attachment(originalName, storedName, "text/plain", file.Content.Length, AttachmentType.Text);
         }
 
         if (ImageExtensions.Contains(extension))
@@ -45,20 +50,29 @@ public class AttachmentService : IAttachmentService
                 throw new FieldValidationException(FieldName, "Image must be at most 5 MB.");
             }
 
-            if (!_imageProcessor.TryProcess(file.Content, out var image, out var error))
+            // Only the quick check here, so the user gets an error at once for a wrong file.
+            // Decoding and resizing is done later by AttachmentProcessingService.
+            if (!_imageProcessor.TryInspect(file.Content, out var format, out var error))
             {
                 throw new FieldValidationException(FieldName, error);
             }
 
-            return await StoreAsync(originalName, image!.Extension, image.ContentType, image.Content, AttachmentType.Image, cancellationToken);
+            // The extension comes from the real format, not from the uploaded name
+            var storedName = NewStoredName(format!.Extension);
+            await _storage.SaveAsync(PendingUpload.NameFor(storedName), file.Content, cancellationToken);
+
+            return new Attachment(
+                originalName, storedName, format.ContentType, file.Content.Length, AttachmentType.Image, AttachmentStatus.Processing);
         }
 
         throw new FieldValidationException(FieldName, "Only JPG, GIF, PNG images and TXT files are allowed.");
     }
 
-    public Task DeleteFileAsync(Attachment attachment, CancellationToken cancellationToken)
+    // Removes both the final file and the waiting original, whichever exists
+    public async Task DeleteFileAsync(Attachment attachment, CancellationToken cancellationToken)
     {
-        return _storage.DeleteAsync(attachment.StoredFileName, cancellationToken);
+        await _storage.DeleteAsync(attachment.StoredFileName, cancellationToken);
+        await _storage.DeleteAsync(PendingUpload.NameFor(attachment.StoredFileName), cancellationToken);
     }
 
     // A real text file: not too big, valid UTF-8 and no zero bytes (those mean binary data)
@@ -84,20 +98,10 @@ public class AttachmentService : IAttachmentService
         }
     }
 
-    private async Task<Attachment> StoreAsync(
-        string originalName,
-        string extension,
-        string contentType,
-        byte[] content,
-        AttachmentType type,
-        CancellationToken cancellationToken)
+    // Generated name, so the user can't choose the path or overwrite other files
+    private static string NewStoredName(string extension)
     {
-        // Generated name, so the user can't choose the path or overwrite other files
-        var storedName = Guid.NewGuid().ToString("N") + extension;
-
-        await _storage.SaveAsync(storedName, content, cancellationToken);
-
-        return new Attachment(originalName, storedName, contentType, content.Length, type);
+        return Guid.NewGuid().ToString("N") + extension;
     }
 
     // Keeps only the name part ("C:\docs\cat.png" -> "cat.png"), the name is only shown to users
