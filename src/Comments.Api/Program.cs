@@ -3,6 +3,7 @@ using Comments.Api.HealthChecks;
 using Comments.Api.RateLimiting;
 using Comments.Application.Attachments;
 using Comments.Application.Comments;
+using Comments.Application.Comments.Events;
 using Comments.Application.Users;
 using Comments.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -23,6 +24,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddSingleton<ICommentTextSanitizer, CommentTextSanitizer>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
+
+// Finds all event handlers (INotificationHandler) in the Application project
+builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblyContaining<CommentCreated>());
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {

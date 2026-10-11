@@ -1,11 +1,13 @@
 using Comments.Application.Attachments;
 using Comments.Application.Captcha;
 using Comments.Application.Comments;
+using Comments.Application.Comments.Events;
 using Comments.Application.Common;
 using Comments.Application.Users;
 using Comments.Application.Validation;
 using Comments.Domain.Entities;
 using Comments.Domain.Enums;
+using MediatR;
 
 namespace Comments.Tests.Application;
 
@@ -16,13 +18,14 @@ public class CommentServiceTests
     private readonly FakeCommentRepository _comments = new();
     private readonly FakeAttachmentService _attachments = new();
     private readonly FakeCommentCache _cache = new();
+    private readonly FakePublisher _publisher = new();
     private readonly CommentService _service;
 
     private static readonly UploadedFile TextFile = new("notes.txt", [72, 105]);
 
     public CommentServiceTests()
     {
-        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments, _cache);
+        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments, _cache, _publisher);
     }
 
     private static CreateCommentRequest ValidRequest() => new()
@@ -293,22 +296,54 @@ public class CommentServiceTests
     }
 
     [Fact]
-    public async Task Create_NewComment_InvalidatesCache()
+    public async Task Create_NewComment_PublishesCommentCreatedWithTheSavedComment()
     {
-        await _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None);
+        var result = await _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None);
 
-        Assert.Equal(1, _cache.InvalidateCount);
+        var published = Assert.IsType<CommentCreated>(Assert.Single(_publisher.Published));
+        Assert.Same(result, published.Comment);
+        Assert.Equal(_comments.Added[0].Id, published.Comment.Id);
     }
 
     [Fact]
-    public async Task Create_Rejected_DoesNotInvalidateCache()
+    public async Task Create_Rejected_PublishesNothing()
     {
         _captcha.IsValid = false;
 
         await Assert.ThrowsAsync<FieldValidationException>(() =>
             _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None));
 
-        Assert.Equal(0, _cache.InvalidateCount);
+        Assert.Empty(_publisher.Published);
+    }
+
+    [Fact]
+    public async Task Create_DatabaseFails_PublishesNothing()
+    {
+        _comments.ThrowOnAdd = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _service.CreateAsync(ValidRequest(), null, null, null, CancellationToken.None));
+
+        Assert.Empty(_publisher.Published);
+    }
+
+    // Remembers what was published instead of calling real handlers
+    private class FakePublisher : IPublisher
+    {
+        public List<object> Published { get; } = [];
+
+        public Task Publish(object notification, CancellationToken cancellationToken = default)
+        {
+            Published.Add(notification);
+            return Task.CompletedTask;
+        }
+
+        public Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default)
+            where TNotification : INotification
+        {
+            Published.Add(notification);
+            return Task.CompletedTask;
+        }
     }
 
     private class FakeCommentCache : ICommentCache
@@ -318,8 +353,6 @@ public class CommentServiceTests
         public PagedResponse<CommentResponse>? StoredPage { get; private set; }
 
         public GetCommentsQuery? StoredQuery { get; private set; }
-
-        public int InvalidateCount { get; private set; }
 
         public Task<PagedResponse<CommentResponse>?> GetPageAsync(GetCommentsQuery query, CancellationToken cancellationToken) =>
             Task.FromResult(PageToReturn);
@@ -331,11 +364,8 @@ public class CommentServiceTests
             return Task.CompletedTask;
         }
 
-        public Task InvalidateAsync(CancellationToken cancellationToken)
-        {
-            InvalidateCount++;
-            return Task.CompletedTask;
-        }
+        // The service doesn't call it any more, the CommentCreated handler does
+        public Task InvalidateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private class FakeCaptchaService : ICaptchaService

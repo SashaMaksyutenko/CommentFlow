@@ -1,9 +1,11 @@
 using Comments.Application.Attachments;
 using Comments.Application.Captcha;
+using Comments.Application.Comments.Events;
 using Comments.Application.Common;
 using Comments.Application.Users;
 using Comments.Application.Validation;
 using Comments.Domain.Entities;
+using MediatR;
 
 namespace Comments.Application.Comments;
 
@@ -18,6 +20,7 @@ public class CommentService : ICommentService
     private readonly ICommentTextSanitizer _sanitizer;
     private readonly IAttachmentService _attachmentService;
     private readonly ICommentCache _cache;
+    private readonly IPublisher _publisher;
 
     public CommentService(
         ICaptchaService captchaService,
@@ -25,7 +28,8 @@ public class CommentService : ICommentService
         ICommentRepository comments,
         ICommentTextSanitizer sanitizer,
         IAttachmentService attachmentService,
-        ICommentCache cache)
+        ICommentCache cache,
+        IPublisher publisher)
     {
         _captchaService = captchaService;
         _userService = userService;
@@ -33,6 +37,7 @@ public class CommentService : ICommentService
         _sanitizer = sanitizer;
         _attachmentService = attachmentService;
         _cache = cache;
+        _publisher = publisher;
     }
 
     public async Task<CommentResponse> CreateAsync(
@@ -99,8 +104,8 @@ public class CommentService : ICommentService
             throw;
         }
 
-        // Cached pages are now outdated: there is a new comment, and the author's home page may have changed
-        await _cache.InvalidateAsync(cancellationToken);
+        // Tell everyone interested (cache, later live updates) that a comment was created
+        await _publisher.Publish(new CommentCreated(response), cancellationToken);
 
         return response;
     }
