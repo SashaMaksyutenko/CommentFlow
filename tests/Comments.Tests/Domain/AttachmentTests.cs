@@ -15,6 +15,7 @@ public class AttachmentTests
         Assert.Equal("image/png", attachment.ContentType);
         Assert.Equal(2048, attachment.Size);
         Assert.Equal(AttachmentType.Image, attachment.Type);
+        Assert.Equal(AttachmentStatus.Ready, attachment.Status);
     }
 
     [Theory]

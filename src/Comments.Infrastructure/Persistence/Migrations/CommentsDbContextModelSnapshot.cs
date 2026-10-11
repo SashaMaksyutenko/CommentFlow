@@ -46,6 +46,11 @@ namespace Comments.Infrastructure.Persistence.Migrations
                     b.Property<long>("Size")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("StoredFileName")
                         .IsRequired()
                         .HasMaxLength(100)

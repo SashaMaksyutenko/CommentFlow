@@ -20,7 +20,7 @@ public class DistributedCommentCacheTests
         var comment = new CommentResponse(7, null, "Sasha1", "sasha@example.com", "https://example.com/",
             "Hi <i>all</i>", new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc))
         {
-            Attachment = new AttachmentResponse("/uploads/a.png", "cat.png", "Image", "image/png", 100)
+            Attachment = new AttachmentResponse("/uploads/a.png", "cat.png", "Image", "Ready", "image/png", 100)
         };
 
         return new PagedResponse<CommentResponse>([comment], 1, 25, 26);

@@ -20,6 +20,7 @@ public class Attachment
         ContentType = contentType;
         Size = size;
         Type = type;
+        Status = AttachmentStatus.Ready;
     }
 
     public int Id { get; private set; }
@@ -38,6 +39,8 @@ public class Attachment
     public long Size { get; private set; }
 
     public AttachmentType Type { get; private set; }
+
+    public AttachmentStatus Status { get; private set; }
 
     public Comment Comment { get; private set; } = null!;
 }

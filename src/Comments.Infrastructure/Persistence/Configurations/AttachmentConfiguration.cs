@@ -29,6 +29,10 @@ public class AttachmentConfiguration : IEntityTypeConfiguration<Attachment>
             .HasConversion<string>()
             .HasMaxLength(10);
 
+        builder.Property(a => a.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         // One-to-one: unique index on CommentId is created by EF.
         // Deleting a comment deletes its attachment row too.
         builder.HasOne(a => a.Comment)

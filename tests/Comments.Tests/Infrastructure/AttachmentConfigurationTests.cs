@@ -28,11 +28,13 @@ public class AttachmentConfigurationTests
         Assert.Equal(DeleteBehavior.Cascade, foreignKey.DeleteBehavior);
     }
 
-    [Fact]
-    public void Type_IsStoredAsString()
+    [Theory]
+    [InlineData(nameof(Attachment.Type))]
+    [InlineData(nameof(Attachment.Status))]
+    public void Enums_AreStoredAsStrings(string propertyName)
     {
-        var typeProperty = GetAttachmentEntity().FindProperty(nameof(Attachment.Type))!;
+        var property = GetAttachmentEntity().FindProperty(propertyName)!;
 
-        Assert.Equal(typeof(string), typeProperty.GetProviderClrType());
+        Assert.Equal(typeof(string), property.GetProviderClrType());
     }
 }

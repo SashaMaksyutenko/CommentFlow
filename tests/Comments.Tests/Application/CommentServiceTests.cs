@@ -173,6 +173,7 @@ public class CommentServiceTests
         Assert.Equal("/uploads/stored.txt", result.Attachment!.Url);
         Assert.Equal("notes.txt", result.Attachment.FileName);
         Assert.Equal("Text", result.Attachment.Type);
+        Assert.Equal("Ready", result.Attachment.Status);
         Assert.Equal("text/plain", result.Attachment.ContentType);
         Assert.Equal(2, result.Attachment.Size);
     }
