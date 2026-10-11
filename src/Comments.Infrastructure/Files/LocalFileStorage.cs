@@ -18,6 +18,13 @@ public class LocalFileStorage : IFileStorage
         await File.WriteAllBytesAsync(GetPath(fileName), content, cancellationToken);
     }
 
+    public async Task<byte[]?> ReadAsync(string fileName, CancellationToken cancellationToken)
+    {
+        var path = GetPath(fileName);
+
+        return File.Exists(path) ? await File.ReadAllBytesAsync(path, cancellationToken) : null;
+    }
+
     public Task DeleteAsync(string fileName, CancellationToken cancellationToken)
     {
         File.Delete(GetPath(fileName)); // does nothing if the file is not there

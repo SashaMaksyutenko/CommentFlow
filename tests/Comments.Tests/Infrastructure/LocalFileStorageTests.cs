@@ -39,6 +39,21 @@ public class LocalFileStorageTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_root, "a.txt")));
     }
 
+    [Fact]
+    public async Task Read_ReturnsSavedBytes_OrNullForMissingFile()
+    {
+        await _storage.SaveAsync("a.txt", [1, 2, 3], CancellationToken.None);
+
+        Assert.Equal([1, 2, 3], await _storage.ReadAsync("a.txt", CancellationToken.None));
+        Assert.Null(await _storage.ReadAsync("missing.txt", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Read_NameWithPath_IsRejected()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _storage.ReadAsync("../appsettings.json", CancellationToken.None));
+    }
+
     [Theory]
     [InlineData("../outside.txt")]
     [InlineData("sub/inside.txt")]

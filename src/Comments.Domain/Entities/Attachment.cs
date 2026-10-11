@@ -8,7 +8,13 @@ public class Attachment
     public const int StoredFileNameMaxLength = 100;
     public const int ContentTypeMaxLength = 100;
 
-    public Attachment(string originalFileName, string storedFileName, string contentType, long size, AttachmentType type)
+    public Attachment(
+        string originalFileName,
+        string storedFileName,
+        string contentType,
+        long size,
+        AttachmentType type,
+        AttachmentStatus status = AttachmentStatus.Ready)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(originalFileName);
         ArgumentException.ThrowIfNullOrWhiteSpace(storedFileName);
@@ -20,7 +26,7 @@ public class Attachment
         ContentType = contentType;
         Size = size;
         Type = type;
-        Status = AttachmentStatus.Ready;
+        Status = status;
     }
 
     public int Id { get; private set; }
@@ -43,4 +49,30 @@ public class Attachment
     public AttachmentStatus Status { get; private set; }
 
     public Comment Comment { get; private set; } = null!;
+
+    // Processing finished well. The processed file usually has another size than the upload.
+    public void MarkReady(long processedSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(processedSize);
+        EnsureProcessing();
+
+        Size = processedSize;
+        Status = AttachmentStatus.Ready;
+    }
+
+    public void MarkFailed()
+    {
+        EnsureProcessing();
+
+        Status = AttachmentStatus.Failed;
+    }
+
+    // Ready and Failed are final, only a file that is still processing can change
+    private void EnsureProcessing()
+    {
+        if (Status != AttachmentStatus.Processing)
+        {
+            throw new InvalidOperationException($"Attachment is already {Status}.");
+        }
+    }
 }

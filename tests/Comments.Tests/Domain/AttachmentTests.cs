@@ -36,4 +36,41 @@ public class AttachmentTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new Attachment("a.txt", "b.txt", "text/plain", size, AttachmentType.Text));
     }
+
+    private static Attachment ProcessingImage() =>
+        new("cat.png", "abc.png", "image/png", 5000, AttachmentType.Image, AttachmentStatus.Processing);
+
+    [Fact]
+    public void MarkReady_FromProcessing_SetsReadyAndNewSize()
+    {
+        var attachment = ProcessingImage();
+
+        attachment.MarkReady(1200);
+
+        Assert.Equal(AttachmentStatus.Ready, attachment.Status);
+        Assert.Equal(1200, attachment.Size);
+    }
+
+    [Fact]
+    public void MarkFailed_FromProcessing_SetsFailed()
+    {
+        var attachment = ProcessingImage();
+
+        attachment.MarkFailed();
+
+        Assert.Equal(AttachmentStatus.Failed, attachment.Status);
+    }
+
+    [Fact]
+    public void ReadyAndFailed_AreFinal()
+    {
+        var ready = ProcessingImage();
+        ready.MarkReady(100);
+        var failed = ProcessingImage();
+        failed.MarkFailed();
+
+        Assert.Throws<InvalidOperationException>(() => ready.MarkFailed());
+        Assert.Throws<InvalidOperationException>(() => ready.MarkReady(200));
+        Assert.Throws<InvalidOperationException>(() => failed.MarkReady(200));
+    }
 }

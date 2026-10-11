@@ -97,6 +97,46 @@ public class MagickImageProcessorTests
         Assert.Contains("damaged", error);
     }
 
+    [Theory]
+    [InlineData(MagickFormat.Png, ".png", "image/png")]
+    [InlineData(MagickFormat.Jpeg, ".jpg", "image/jpeg")]
+    [InlineData(MagickFormat.Gif, ".gif", "image/gif")]
+    public void Inspect_RealImage_ReturnsItsFormat(MagickFormat format, string extension, string contentType)
+    {
+        var content = CreateImage(format, 800, 600);
+
+        Assert.True(_processor.TryInspect(content, out var info, out var error), error);
+
+        Assert.Equal(extension, info!.Extension);
+        Assert.Equal(contentType, info.ContentType);
+    }
+
+    [Fact]
+    public void Inspect_NotAnImage_IsRejected()
+    {
+        Assert.False(_processor.TryInspect(Encoding.UTF8.GetBytes("just text"), out var info, out var error));
+        Assert.Null(info);
+        Assert.Contains("not a JPG, GIF or PNG", error);
+    }
+
+    [Fact]
+    public void Inspect_TooLargeImage_IsRejected()
+    {
+        var content = CreateImage(MagickFormat.Png, MagickImageProcessor.MaxSourceSide + 1, 10);
+
+        Assert.False(_processor.TryInspect(content, out _, out var error));
+        Assert.Contains("too large", error);
+    }
+
+    [Fact]
+    public void Inspect_BrokenHeader_IsRejected()
+    {
+        byte[] content = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4, 5, 6, 7, 8];
+
+        Assert.False(_processor.TryInspect(content, out _, out var error));
+        Assert.Contains("damaged", error);
+    }
+
     [Fact]
     public void ImageWithTooLongSide_IsRejectedBeforeDecoding()
     {

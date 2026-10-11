@@ -13,31 +13,31 @@ public class MagickImageProcessor : IImageProcessor
     public const int MaxSourceSide = 8000;
     public const int MaxTotalPixels = 25_000_000;
 
-    public bool TryProcess(byte[] content, out ProcessedImage? image, out string error)
+    public bool TryInspect(byte[] content, out ImageFormatInfo? format, out string error)
     {
-        image = null;
-        error = "";
+        format = null;
 
-        var format = DetectFormat(content);
-        if (format is null)
+        if (!TryCheck(content, out var magickFormat, out error))
         {
-            error = "The file is not a JPG, GIF or PNG image.";
             return false;
         }
 
-        // Read with the detected format only. Without this ImageMagick guesses the format
-        // itself and could open things like SVG or scripts hidden behind a .png name.
-        var settings = new MagickReadSettings { Format = format.Value };
+        format = new ImageFormatInfo(Extension(magickFormat), ContentType(magickFormat));
+        return true;
+    }
+
+    public bool TryProcess(byte[] content, out ProcessedImage? image, out string error)
+    {
+        image = null;
+
+        if (!TryCheck(content, out var format, out error))
+        {
+            return false;
+        }
 
         try
         {
-            if (!HasAllowedSize(content, settings))
-            {
-                error = $"Image is too large, max {MaxSourceSide} pixels per side and {MaxTotalPixels / 1_000_000} megapixels in total.";
-                return false;
-            }
-
-            using var frames = new MagickImageCollection(content, settings);
+            using var frames = new MagickImageCollection(content, ReadSettings(format));
 
             // GIF frames can be partial; make every frame full size before resizing
             if (format == MagickFormat.Gif)
@@ -59,9 +59,9 @@ public class MagickImageProcessor : IImageProcessor
 
             var first = frames[0];
             image = new ProcessedImage(
-                frames.ToByteArray(format.Value),
-                Extension(format.Value),
-                ContentType(format.Value),
+                frames.ToByteArray(format),
+                Extension(format),
+                ContentType(format),
                 (int)first.Width,
                 (int)first.Height);
             return true;
@@ -71,6 +71,45 @@ public class MagickImageProcessor : IImageProcessor
             error = "The image file is damaged.";
             return false;
         }
+    }
+
+    // The quick part shared by both methods: format by the first bytes and size by the headers
+    private static bool TryCheck(byte[] content, out MagickFormat format, out string error)
+    {
+        error = "";
+        format = default;
+
+        var detected = DetectFormat(content);
+        if (detected is null)
+        {
+            error = "The file is not a JPG, GIF or PNG image.";
+            return false;
+        }
+
+        format = detected.Value;
+
+        try
+        {
+            if (!HasAllowedSize(content, ReadSettings(format)))
+            {
+                error = $"Image is too large, max {MaxSourceSide} pixels per side and {MaxTotalPixels / 1_000_000} megapixels in total.";
+                return false;
+            }
+        }
+        catch (MagickException)
+        {
+            error = "The image file is damaged.";
+            return false;
+        }
+
+        return true;
+    }
+
+    // Read with the detected format only. Without this ImageMagick guesses the format
+    // itself and could open things like SVG or scripts hidden behind a .png name.
+    private static MagickReadSettings ReadSettings(MagickFormat format)
+    {
+        return new MagickReadSettings { Format = format };
     }
 
     // Ping reads only the headers (sizes), not the pixels, so it is cheap even for a huge file.

@@ -152,6 +152,10 @@ public class AttachmentServiceTests
             error = Error;
             return Result is not null;
         }
+
+        // Not used by AttachmentService yet
+        public bool TryInspect(byte[] content, out ImageFormatInfo? format, out string error) =>
+            throw new NotSupportedException();
     }
 
     private class FakeStorage : IFileStorage
@@ -163,6 +167,9 @@ public class AttachmentServiceTests
             Files[fileName] = content;
             return Task.CompletedTask;
         }
+
+        public Task<byte[]?> ReadAsync(string fileName, CancellationToken cancellationToken) =>
+            Task.FromResult(Files.GetValueOrDefault(fileName));
 
         public Task DeleteAsync(string fileName, CancellationToken cancellationToken)
         {
