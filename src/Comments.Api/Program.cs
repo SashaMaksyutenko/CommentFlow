@@ -1,5 +1,6 @@
 using Comments.Api.ErrorHandling;
 using Comments.Api.HealthChecks;
+using Comments.Api.Hubs;
 using Comments.Api.RateLimiting;
 using Comments.Application.Attachments;
 using Comments.Application.Comments;
@@ -27,8 +28,12 @@ builder.Services.AddSingleton<ICommentTextSanitizer, CommentTextSanitizer>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IAttachmentProcessingService, AttachmentProcessingService>();
 
-// Finds all event handlers (INotificationHandler) in the Application project
-builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblyContaining<CommentCreated>());
+// Finds all event handlers (INotificationHandler) in two projects:
+// Application (cache) and this one (live updates through SignalR)
+builder.Services.AddMediatR(config =>
+    config.RegisterServicesFromAssemblies(typeof(CommentCreated).Assembly, typeof(Program).Assembly));
+
+builder.Services.AddSignalR();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -100,5 +105,6 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.MapControllers();
+app.MapHub<CommentsHub>(CommentsHub.Path);
 
 app.Run();
