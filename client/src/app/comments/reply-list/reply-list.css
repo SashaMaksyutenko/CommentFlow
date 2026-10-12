@@ -1,0 +1,27 @@
+/* Every level of replies is shifted to the right and gets a line on the left */
+.replies {
+  margin: 0;
+  padding-left: 1rem;
+  list-style: none;
+  border-left: 2px solid #ddd;
+}
+
+.reply {
+  padding: 0.5rem 0;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.name {
+  font-weight: bold;
+}
+
+.text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

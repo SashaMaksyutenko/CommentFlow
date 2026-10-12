@@ -20,4 +20,9 @@ export class CommentsApiService {
 
     return this.http.get<PagedResponse<CommentModel>>(this.commentsUrl, { params });
   }
+
+  // All replies under a comment as a tree: every reply has its own "replies"
+  getReplies(commentId: number): Observable<CommentModel[]> {
+    return this.http.get<CommentModel[]>(`${this.commentsUrl}/${commentId}/replies`);
+  }
 }

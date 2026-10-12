@@ -1,0 +1,24 @@
+<ul class="replies">
+  @for (reply of replies(); track reply.id) {
+    <li>
+      <article class="reply">
+        <header>
+          @if (reply.homePage) {
+            <a class="name" [href]="reply.homePage" target="_blank" rel="noopener noreferrer nofollow">{{ reply.userName }}</a>
+          } @else {
+            <span class="name">{{ reply.userName }}</span>
+          }
+          <span>{{ reply.email }}</span>
+          <time [attr.datetime]="reply.createdAt">{{ reply.createdAt | date: 'dd.MM.yy HH:mm' }}</time>
+        </header>
+        <!-- Same as in the table: the text has HTML tags and Angular cleans it before inserting -->
+        <div class="text" [innerHTML]="reply.text"></div>
+      </article>
+
+      <!-- The component uses itself here, that is how any depth of replies gets drawn -->
+      @if (reply.replies.length > 0) {
+        <app-reply-list [replies]="reply.replies" />
+      }
+    </li>
+  }
+</ul>

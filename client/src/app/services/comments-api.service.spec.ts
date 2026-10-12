@@ -52,4 +52,26 @@ describe('CommentsApiService', () => {
 
     expect(result).toEqual(page);
   });
+
+  it('asks the API for the replies of the given comment', () => {
+    const reply: CommentModel = {
+      id: 8,
+      parentId: 7,
+      userName: 'Olena2',
+      email: 'olena@example.com',
+      homePage: null,
+      text: 'Hello',
+      createdAt: '2026-10-01T10:30:00Z',
+      attachment: null,
+      replies: [],
+    };
+    let result: CommentModel[] | undefined;
+
+    service.getReplies(7).subscribe((r) => (result = r));
+    const request = http.expectOne('/api/comments/7/replies');
+    request.flush([reply]);
+
+    expect(request.request.method).toBe('GET');
+    expect(result).toEqual([reply]);
+  });
 });
