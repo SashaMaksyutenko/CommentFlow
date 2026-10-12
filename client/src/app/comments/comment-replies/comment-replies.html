@@ -1,0 +1,11 @@
+@if (loadFailed()) {
+  <p class="message error" role="alert">Could not load replies.</p>
+} @else if (replies(); as loadedReplies) {
+  @if (loadedReplies.length === 0) {
+    <p class="message">No replies yet.</p>
+  } @else {
+    <app-reply-list [replies]="loadedReplies" />
+  }
+} @else {
+  <p class="message">Loading replies…</p>
+}
