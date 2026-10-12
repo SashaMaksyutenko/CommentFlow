@@ -5,12 +5,17 @@
     @if (currentPage.items.length === 0) {
       <p class="message">No comments yet.</p>
     } @else {
-      <table>
+      <!-- While another page or order is loading, the old rows stay visible but faded -->
+      <table [class.loading]="loading()" [attr.aria-busy]="loading()">
         <thead>
           <tr>
-            <th scope="col">User Name</th>
-            <th scope="col">E-mail</th>
-            <th scope="col">Date</th>
+            @for (column of sortableColumns; track column.field) {
+              <th scope="col" [attr.aria-sort]="ariaSort(column.field)">
+                <button type="button" class="sort" (click)="sortBy(column.field)">
+                  {{ column.label }} {{ sortArrow(column.field) }}
+                </button>
+              </th>
+            }
             <th scope="col">Comment</th>
           </tr>
         </thead>
@@ -33,6 +38,22 @@
           }
         </tbody>
       </table>
+
+      @if (currentPage.totalPages > 1) {
+        <nav class="pagination" aria-label="Pages">
+          <button type="button" [disabled]="currentPage.page <= 1" (click)="goToPage(currentPage.page - 1)">
+            Previous
+          </button>
+          <span>Page {{ currentPage.page }} of {{ currentPage.totalPages }}</span>
+          <button
+            type="button"
+            [disabled]="currentPage.page >= currentPage.totalPages"
+            (click)="goToPage(currentPage.page + 1)"
+          >
+            Next
+          </button>
+        </nav>
+      }
     }
   } @else if (loading()) {
     <p class="message">Loading comments…</p>

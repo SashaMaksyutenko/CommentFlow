@@ -1,6 +1,6 @@
 import { formatDate } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
 import { CommentsTable } from './comments-table';
@@ -26,12 +26,25 @@ describe('CommentsTable', () => {
     };
   }
 
+  // The request the component has just sent
+  function lastRequest(): TestRequest {
+    return http.expectOne((req) => req.url === '/api/comments');
+  }
+
   // Answers the request of the component the way the API would
-  async function apiReturns(items: CommentModel[]): Promise<void> {
-    http
-      .expectOne((req) => req.url === '/api/comments')
-      .flush({ items, page: 1, pageSize: 25, totalCount: items.length, totalPages: 1 });
+  async function apiReturns(items: CommentModel[], page = 1, totalPages = 1): Promise<void> {
+    lastRequest().flush({ items, page, pageSize: 25, totalCount: items.length, totalPages });
     await fixture.whenStable();
+  }
+
+  // A button in the table header or under the table, found by its text
+  function button(label: string): HTMLButtonElement {
+    const buttons = Array.from(element.querySelectorAll('button'));
+    return buttons.find((item) => item.textContent?.includes(label))!;
+  }
+
+  function header(label: string): HTMLElement {
+    return button(label).closest('th')!;
   }
 
   beforeEach(async () => {
@@ -122,5 +135,116 @@ describe('CommentsTable', () => {
     await fixture.whenStable();
 
     expect(element.querySelector('[role="alert"]')?.textContent).toContain('Could not load comments');
+  });
+
+  it('sorts by a column from A to Z when its header is clicked', async () => {
+    await apiReturns([comment()]);
+
+    button('User Name').click();
+
+    const request = lastRequest().request;
+    expect(request.params.get('sortBy')).toBe('userName');
+    expect(request.params.get('sortDirection')).toBe('asc');
+  });
+
+  it('turns the order around when the same header is clicked again', async () => {
+    await apiReturns([comment()]);
+    button('E-mail').click();
+    await apiReturns([comment()]);
+
+    button('E-mail').click();
+
+    const request = lastRequest().request;
+    expect(request.params.get('sortBy')).toBe('email');
+    expect(request.params.get('sortDirection')).toBe('desc');
+  });
+
+  it('shows the oldest comments first after a click on Date', async () => {
+    await apiReturns([comment()]);
+
+    // Date is already sorted from the newest, so the click turns it around
+    button('Date').click();
+
+    expect(lastRequest().request.params.get('sortDirection')).toBe('asc');
+  });
+
+  it('marks the column the table is sorted by', async () => {
+    await apiReturns([comment()]);
+    expect(header('Date').getAttribute('aria-sort')).toBe('descending');
+    expect(header('Date').textContent).toContain('▼');
+
+    button('User Name').click();
+    await apiReturns([comment()]);
+
+    expect(header('User Name').getAttribute('aria-sort')).toBe('ascending');
+    expect(header('User Name').textContent).toContain('▲');
+    expect(header('Date').hasAttribute('aria-sort')).toBe(false);
+  });
+
+  it('asks for the next and the previous page and keeps the order', async () => {
+    await apiReturns([comment()], 1, 3);
+
+    button('Next').click();
+    const next = lastRequest();
+    expect(next.request.params.get('page')).toBe('2');
+    expect(next.request.params.get('sortBy')).toBe('createdAt');
+    next.flush({ items: [comment()], page: 2, pageSize: 25, totalCount: 60, totalPages: 3 });
+    await fixture.whenStable();
+    expect(element.querySelector('.pagination')?.textContent).toContain('Page 2 of 3');
+
+    button('Previous').click();
+
+    expect(lastRequest().request.params.get('page')).toBe('1');
+  });
+
+  it('turns off Previous on the first page and Next on the last one', async () => {
+    await apiReturns([comment()], 1, 2);
+    expect(button('Previous').disabled).toBe(true);
+    expect(button('Next').disabled).toBe(false);
+
+    button('Next').click();
+    await apiReturns([comment()], 2, 2);
+
+    expect(button('Previous').disabled).toBe(false);
+    expect(button('Next').disabled).toBe(true);
+  });
+
+  it('hides the page buttons when all comments fit on one page', async () => {
+    await apiReturns([comment()]);
+
+    expect(element.querySelector('.pagination')).toBeNull();
+  });
+
+  it('goes back to the first page when the order changes', async () => {
+    await apiReturns([comment()], 1, 3);
+    button('Next').click();
+    await apiReturns([comment()], 2, 3);
+
+    button('User Name').click();
+
+    expect(lastRequest().request.params.get('page')).toBe('1');
+  });
+
+  it('keeps the old rows on the screen while the new ones are loading', async () => {
+    await apiReturns([comment()], 1, 2);
+
+    button('Next').click();
+    fixture.detectChanges();
+
+    expect(element.querySelectorAll('tbody tr').length).toBe(1);
+    expect(element.querySelector('table')?.getAttribute('aria-busy')).toBe('true');
+    await apiReturns([comment()], 2, 2);
+    expect(element.querySelector('table')?.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('drops the request that is still running when the visitor clicks again', async () => {
+    await apiReturns([comment()], 1, 3);
+    button('Next').click();
+    const first = lastRequest();
+
+    button('User Name').click();
+
+    expect(first.cancelled).toBe(true);
+    expect(lastRequest().request.params.get('sortBy')).toBe('userName');
   });
 });

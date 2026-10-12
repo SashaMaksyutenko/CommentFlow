@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { CommentModel } from '../../models/comment.model';
-import { CommentsQuery, PagedResponse } from '../../models/paging.model';
+import { CommentSortField, CommentsQuery, PagedResponse, SortDirection } from '../../models/paging.model';
 import { CommentsApiService } from '../../services/comments-api.service';
 
 @Component({
@@ -25,12 +25,60 @@ export class CommentsTable implements OnInit, OnDestroy {
   protected readonly loading = signal(false);
   protected readonly loadFailed = signal(false);
 
+  // The columns the table can be sorted by, in the order they are shown
+  protected readonly sortableColumns: { field: CommentSortField; label: string }[] = [
+    { field: 'userName', label: 'User Name' },
+    { field: 'email', label: 'E-mail' },
+    { field: 'createdAt', label: 'Date' },
+  ];
+
   ngOnInit(): void {
     this.load();
   }
 
   ngOnDestroy(): void {
     this.request?.unsubscribe();
+  }
+
+  protected sortBy(field: CommentSortField): void {
+    const current = this.query();
+    let sortDirection: SortDirection;
+
+    if (current.sortBy === field) {
+      // The same column again: turn the order around
+      sortDirection = current.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      // Another column: dates start from the newest, names and e-mails from A
+      sortDirection = field === 'createdAt' ? 'desc' : 'asc';
+    }
+
+    // With a new order the old page number means nothing, start from the first page
+    this.query.set({ page: 1, sortBy: field, sortDirection });
+    this.load();
+  }
+
+  protected goToPage(page: number): void {
+    this.query.update((query) => ({ ...query, page }));
+    this.load();
+  }
+
+  // For screen readers: which column is sorted and how
+  protected ariaSort(field: CommentSortField): 'ascending' | 'descending' | null {
+    const query = this.query();
+    if (query.sortBy !== field) {
+      return null;
+    }
+
+    return query.sortDirection === 'asc' ? 'ascending' : 'descending';
+  }
+
+  protected sortArrow(field: CommentSortField): string {
+    const query = this.query();
+    if (query.sortBy !== field) {
+      return '';
+    }
+
+    return query.sortDirection === 'asc' ? '▲' : '▼';
   }
 
   private load(): void {
