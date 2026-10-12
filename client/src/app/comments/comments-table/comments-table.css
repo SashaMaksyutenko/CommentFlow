@@ -35,6 +35,12 @@ table.loading {
   cursor: pointer;
 }
 
+/* The row with replies is shifted a bit so it reads as a part of the comment above */
+.replies-row td {
+  padding-left: 1.5rem;
+  background: #fafafa;
+}
+
 .pagination {
   display: flex;
   align-items: center;

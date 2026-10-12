@@ -47,6 +47,16 @@ describe('CommentsTable', () => {
     return button(label).closest('th')!;
   }
 
+  // The button that shows or hides the replies, by the number of the comment in the table
+  function repliesButton(index: number): HTMLButtonElement {
+    return element.querySelectorAll<HTMLButtonElement>('.replies-toggle')[index];
+  }
+
+  function clickReplies(index: number): void {
+    repliesButton(index).click();
+    fixture.detectChanges(); // the replies component appears (or goes away) right now
+  }
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CommentsTable],
@@ -246,5 +256,54 @@ describe('CommentsTable', () => {
 
     expect(first.cancelled).toBe(true);
     expect(lastRequest().request.params.get('sortBy')).toBe('userName');
+  });
+
+  it('does not load the replies until the visitor asks for them', async () => {
+    await apiReturns([comment({ id: 1 })]);
+
+    expect(element.querySelector('.replies-row')).toBeNull();
+    expect(repliesButton(0).getAttribute('aria-expanded')).toBe('false');
+    http.expectNone('/api/comments/1/replies');
+  });
+
+  it('loads the replies and shows them right under the comment', async () => {
+    await apiReturns([comment({ id: 1 }), comment({ id: 2 }), comment({ id: 3 })]);
+
+    clickReplies(1);
+    http.expectOne('/api/comments/2/replies').flush([comment({ id: 9, parentId: 2, text: 'A reply' })]);
+    await fixture.whenStable();
+
+    // 3 comments and one more row with the replies, after the second comment
+    const rows = element.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(4);
+    expect(rows[2].classList.contains('replies-row')).toBe(true);
+    expect(rows[2].textContent).toContain('A reply');
+    expect(repliesButton(1).textContent).toContain('Hide replies');
+    expect(repliesButton(1).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('hides the replies when the button is clicked again', async () => {
+    await apiReturns([comment({ id: 1 })]);
+    clickReplies(0);
+    http.expectOne('/api/comments/1/replies').flush([]);
+    await fixture.whenStable();
+
+    clickReplies(0);
+
+    expect(element.querySelector('.replies-row')).toBeNull();
+    expect(repliesButton(0).textContent).toContain('Replies');
+    expect(repliesButton(0).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('can show the replies of several comments at once', async () => {
+    await apiReturns([comment({ id: 1 }), comment({ id: 2 })]);
+
+    clickReplies(0);
+    clickReplies(1);
+    http.expectOne('/api/comments/1/replies').flush([]);
+    http.expectOne('/api/comments/2/replies').flush([]);
+    await fixture.whenStable();
+
+    expect(element.querySelectorAll('.replies-row').length).toBe(2);
   });
 });

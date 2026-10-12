@@ -4,9 +4,10 @@ import { Subscription } from 'rxjs';
 import { CommentModel } from '../../models/comment.model';
 import { CommentSortField, CommentsQuery, PagedResponse, SortDirection } from '../../models/paging.model';
 import { CommentsApiService } from '../../services/comments-api.service';
+import { CommentReplies } from '../comment-replies/comment-replies';
 
 @Component({
-  imports: [DatePipe],
+  imports: [DatePipe, CommentReplies],
   selector: 'app-comments-table',
   styleUrl: './comments-table.css',
   templateUrl: './comments-table.html',
@@ -24,6 +25,9 @@ export class CommentsTable implements OnInit, OnDestroy {
   protected readonly page = signal<PagedResponse<CommentModel> | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadFailed = signal(false);
+
+  // Ids of the comments whose replies are shown now
+  protected readonly openReplies = signal<number[]>([]);
 
   // The columns the table can be sorted by, in the order they are shown
   protected readonly sortableColumns: { field: CommentSortField; label: string }[] = [
@@ -79,6 +83,19 @@ export class CommentsTable implements OnInit, OnDestroy {
     }
 
     return query.sortDirection === 'asc' ? '▲' : '▼';
+  }
+
+  protected repliesOpen(commentId: number): boolean {
+    return this.openReplies().includes(commentId);
+  }
+
+  // Shows the replies of the comment, or hides them if they are shown
+  protected toggleReplies(commentId: number): void {
+    if (this.repliesOpen(commentId)) {
+      this.openReplies.update((ids) => ids.filter((id) => id !== commentId));
+    } else {
+      this.openReplies.update((ids) => [...ids, commentId]);
+    }
   }
 
   private load(): void {
