@@ -1,4 +1,6 @@
+using Comments.Application.Attachments.Events;
 using Comments.Domain.Enums;
+using MediatR;
 
 namespace Comments.Application.Attachments;
 
@@ -7,12 +9,18 @@ public class AttachmentProcessingService : IAttachmentProcessingService
     private readonly IAttachmentRepository _attachments;
     private readonly IFileStorage _storage;
     private readonly IImageProcessor _imageProcessor;
+    private readonly IPublisher _publisher;
 
-    public AttachmentProcessingService(IAttachmentRepository attachments, IFileStorage storage, IImageProcessor imageProcessor)
+    public AttachmentProcessingService(
+        IAttachmentRepository attachments,
+        IFileStorage storage,
+        IImageProcessor imageProcessor,
+        IPublisher publisher)
     {
         _attachments = attachments;
         _storage = storage;
         _imageProcessor = imageProcessor;
+        _publisher = publisher;
     }
 
     public async Task ProcessAsync(int attachmentId, CancellationToken cancellationToken)
@@ -42,5 +50,10 @@ public class AttachmentProcessingService : IAttachmentProcessingService
         // Status first, the original last: if saving fails, the original is still there for a retry
         await _attachments.SaveChangesAsync(cancellationToken);
         await _storage.DeleteAsync(pendingName, cancellationToken);
+
+        // Tell everyone interested (cache, later live updates) that the file has its final status
+        await _publisher.Publish(
+            new AttachmentProcessed(attachment.CommentId, AttachmentResponse.From(attachment)),
+            cancellationToken);
     }
 }

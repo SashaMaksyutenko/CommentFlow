@@ -1,4 +1,5 @@
 using Comments.Application.Attachments;
+using Comments.Application.Attachments.Events;
 using Comments.Domain.Entities;
 using Comments.Domain.Enums;
 using Comments.Tests.Fakes;
@@ -13,11 +14,12 @@ public class AttachmentProcessingServiceTests
     private readonly FakeAttachmentRepository _attachments = new();
     private readonly FakeFileStorage _storage = new();
     private readonly FakeImageProcessor _images = new();
+    private readonly FakePublisher _publisher = new();
     private readonly AttachmentProcessingService _service;
 
     public AttachmentProcessingServiceTests()
     {
-        _service = new AttachmentProcessingService(_attachments, _storage, _images);
+        _service = new AttachmentProcessingService(_attachments, _storage, _images, _publisher);
     }
 
     // An uploaded image that waits for processing, with its original on "disk"
@@ -42,6 +44,11 @@ public class AttachmentProcessingServiceTests
         Assert.Equal([1, 2, 3], _storage.Files[StoredName]);
         Assert.False(_storage.Files.ContainsKey(PendingName)); // the original is removed
         Assert.Equal(1, _attachments.SaveCount);
+
+        var published = Assert.IsType<AttachmentProcessed>(Assert.Single(_publisher.Published));
+        Assert.Equal("Ready", published.Attachment.Status);
+        Assert.Equal(3, published.Attachment.Size);
+        Assert.Equal("/uploads/" + StoredName, published.Attachment.Url);
     }
 
     [Fact]
@@ -55,6 +62,10 @@ public class AttachmentProcessingServiceTests
         Assert.Equal(AttachmentStatus.Failed, attachment.Status);
         Assert.Empty(_storage.Files);
         Assert.Equal(1, _attachments.SaveCount);
+
+        // A failure is also announced, clients must stop showing "processing"
+        var published = Assert.IsType<AttachmentProcessed>(Assert.Single(_publisher.Published));
+        Assert.Equal("Failed", published.Attachment.Status);
     }
 
     [Fact]
@@ -79,6 +90,7 @@ public class AttachmentProcessingServiceTests
 
         Assert.Equal(1, _images.ProcessCount);
         Assert.Equal(1, _attachments.SaveCount);
+        Assert.Single(_publisher.Published);
     }
 
     [Fact]
@@ -88,6 +100,7 @@ public class AttachmentProcessingServiceTests
 
         Assert.Equal(0, _images.ProcessCount);
         Assert.Equal(0, _attachments.SaveCount);
+        Assert.Empty(_publisher.Published);
     }
 
     private class FakeAttachmentRepository : IAttachmentRepository
