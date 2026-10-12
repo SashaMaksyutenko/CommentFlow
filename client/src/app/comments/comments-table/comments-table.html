@@ -1,0 +1,40 @@
+<section class="comments">
+  @if (loadFailed()) {
+    <p class="message error" role="alert">Could not load comments. Is the API running?</p>
+  } @else if (page(); as currentPage) {
+    @if (currentPage.items.length === 0) {
+      <p class="message">No comments yet.</p>
+    } @else {
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">User Name</th>
+            <th scope="col">E-mail</th>
+            <th scope="col">Date</th>
+            <th scope="col">Comment</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (comment of currentPage.items; track comment.id) {
+            <tr>
+              <td>
+                @if (comment.homePage) {
+                  <a [href]="comment.homePage" target="_blank" rel="noopener noreferrer nofollow">{{ comment.userName }}</a>
+                } @else {
+                  {{ comment.userName }}
+                }
+              </td>
+              <td>{{ comment.email }}</td>
+              <td>{{ comment.createdAt | date: 'dd.MM.yy HH:mm' }}</td>
+              <!-- The text has HTML tags (i, strong, code, a). Angular cleans it once more
+                   before inserting: scripts and event handlers never get into the page. -->
+              <td class="text" [innerHTML]="comment.text"></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  } @else if (loading()) {
+    <p class="message">Loading comments…</p>
+  }
+</section>

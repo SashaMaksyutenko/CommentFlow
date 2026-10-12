@@ -9,50 +9,23 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
+      // The comments table inside the page asks the API, so HTTP is replaced here too
       providers: [provideHttpClient(), provideHttpClientTesting()],
     })
       .compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
 
-  // Creates the component and lets it send its first request
-  function createApp() {
+  it('shows the title and the comments table', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    const request = http.expectOne((req) => req.url === '/api/comments');
-    return { fixture, request, page: fixture.nativeElement as HTMLElement };
-  }
-
-  it('should render title', async () => {
-    const { fixture, request, page } = createApp();
-    request.flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
+    http
+      .expectOne((req) => req.url === '/api/comments')
+      .flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
     await fixture.whenStable();
 
+    const page = fixture.nativeElement as HTMLElement;
     expect(page.querySelector('h1')?.textContent).toContain('Comments');
-  });
-
-  it('asks for the first page, newest first', () => {
-    const { request } = createApp();
-
-    expect(request.request.params.get('page')).toBe('1');
-    expect(request.request.params.get('sortBy')).toBe('createdAt');
-    expect(request.request.params.get('sortDirection')).toBe('desc');
-    request.flush({ items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 });
-  });
-
-  it('shows how many comments the API has', async () => {
-    const { fixture, request, page } = createApp();
-    request.flush({ items: [], page: 1, pageSize: 25, totalCount: 42, totalPages: 2 });
-    await fixture.whenStable();
-
-    expect(page.textContent).toContain('Total comments: 42');
-  });
-
-  it('shows a message when the API is not reachable', async () => {
-    const { fixture, request, page } = createApp();
-    request.flush('error', { status: 500, statusText: 'Server Error' });
-    await fixture.whenStable();
-
-    expect(page.textContent).toContain('Could not load comments');
+    expect(page.querySelector('app-comments-table')).not.toBeNull();
   });
 });

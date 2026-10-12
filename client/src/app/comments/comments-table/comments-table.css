@@ -1,0 +1,22 @@
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.5rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Keep the line breaks the user typed, and don't let a very long word stretch the table */
+.text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  color: #b00020;
+}
