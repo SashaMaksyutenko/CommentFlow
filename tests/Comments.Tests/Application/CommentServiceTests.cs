@@ -17,7 +17,7 @@ public class CommentServiceTests
     private readonly FakeUserService _users = new();
     private readonly FakeCommentRepository _comments = new();
     private readonly FakeAttachmentService _attachments = new();
-    private readonly FakeProcessingService _processing = new();
+    private readonly FakeProcessingQueue _queue = new();
     private readonly FakeCommentCache _cache = new();
     private readonly FakePublisher _publisher = new();
     private readonly CommentService _service;
@@ -27,7 +27,7 @@ public class CommentServiceTests
 
     public CommentServiceTests()
     {
-        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments, _processing, _cache, _publisher);
+        _service = new CommentService(_captcha, _users, _comments, new CommentTextSanitizer(), _attachments, _queue, _cache, _publisher);
     }
 
     private static CreateCommentRequest ValidRequest() => new()
@@ -197,45 +197,45 @@ public class CommentServiceTests
     }
 
     [Fact]
-    public async Task Create_WithImage_ProcessesItAfterTheCommentIsSaved()
+    public async Task Create_WithImage_QueuesItAfterTheCommentIsSaved()
     {
-        var savedCommentsAtProcessing = -1;
-        _processing.OnProcess = () => savedCommentsAtProcessing = _comments.Added.Count;
+        var savedCommentsWhenQueued = -1;
+        _queue.OnEnqueue = () => savedCommentsWhenQueued = _comments.Added.Count;
 
         await _service.CreateAsync(ValidRequest(), ImageFile, null, null, CancellationToken.None);
 
-        Assert.Equal([FakeAttachmentService.SavedAttachmentId], _processing.ProcessedIds);
-        Assert.Equal(1, savedCommentsAtProcessing);
+        Assert.Equal([FakeAttachmentService.SavedAttachmentId], _queue.EnqueuedIds);
+
+        // The consumer looks the attachment up in the database, so it must be saved first
+        Assert.Equal(1, savedCommentsWhenQueued);
     }
 
     [Fact]
-    public async Task Create_WithImage_ResponseHasTheStatusAfterProcessing()
+    public async Task Create_WithImage_AnswersWithoutWaitingForProcessing()
     {
-        _processing.OnProcess = () => _attachments.Last!.MarkReady(3);
-
         var result = await _service.CreateAsync(ValidRequest(), ImageFile, null, null, CancellationToken.None);
 
-        Assert.Equal("Ready", result.Attachment!.Status);
-        Assert.Equal(3, result.Attachment.Size);
+        Assert.Equal("Processing", result.Attachment!.Status);
     }
 
     [Fact]
-    public async Task Create_WithTextFile_NeedsNoProcessing()
+    public async Task Create_WithTextFile_QueuesNothing()
     {
-        await _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None);
+        var result = await _service.CreateAsync(ValidRequest(), TextFile, null, null, CancellationToken.None);
 
-        Assert.Empty(_processing.ProcessedIds);
+        Assert.Empty(_queue.EnqueuedIds);
+        Assert.Equal("Ready", result.Attachment!.Status);
     }
 
     [Fact]
-    public async Task Create_WithImage_DatabaseFails_NothingIsProcessed()
+    public async Task Create_WithImage_DatabaseFails_QueuesNothing()
     {
         _comments.ThrowOnAdd = true;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _service.CreateAsync(ValidRequest(), ImageFile, null, null, CancellationToken.None));
 
-        Assert.Empty(_processing.ProcessedIds);
+        Assert.Empty(_queue.EnqueuedIds);
         Assert.Equal(1, _attachments.DeleteCount);
     }
 
@@ -510,17 +510,18 @@ public class CommentServiceTests
         }
     }
 
-    private class FakeProcessingService : IAttachmentProcessingService
+    // Only remembers what was queued, nothing is processed
+    private class FakeProcessingQueue : IAttachmentProcessingQueue
     {
-        public List<int> ProcessedIds { get; } = [];
+        public List<int> EnqueuedIds { get; } = [];
 
-        // Lets a test do something at the moment of processing
-        public Action? OnProcess { get; set; }
+        // Lets a test look around at the moment of queuing
+        public Action? OnEnqueue { get; set; }
 
-        public Task ProcessAsync(int attachmentId, CancellationToken cancellationToken)
+        public Task EnqueueAsync(int attachmentId, CancellationToken cancellationToken)
         {
-            ProcessedIds.Add(attachmentId);
-            OnProcess?.Invoke();
+            EnqueuedIds.Add(attachmentId);
+            OnEnqueue?.Invoke();
             return Task.CompletedTask;
         }
     }

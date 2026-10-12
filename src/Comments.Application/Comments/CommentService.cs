@@ -20,7 +20,7 @@ public class CommentService : ICommentService
     private readonly ICommentRepository _comments;
     private readonly ICommentTextSanitizer _sanitizer;
     private readonly IAttachmentService _attachmentService;
-    private readonly IAttachmentProcessingService _attachmentProcessing;
+    private readonly IAttachmentProcessingQueue _processingQueue;
     private readonly ICommentCache _cache;
     private readonly IPublisher _publisher;
 
@@ -30,7 +30,7 @@ public class CommentService : ICommentService
         ICommentRepository comments,
         ICommentTextSanitizer sanitizer,
         IAttachmentService attachmentService,
-        IAttachmentProcessingService attachmentProcessing,
+        IAttachmentProcessingQueue processingQueue,
         ICommentCache cache,
         IPublisher publisher)
     {
@@ -39,7 +39,7 @@ public class CommentService : ICommentService
         _comments = comments;
         _sanitizer = sanitizer;
         _attachmentService = attachmentService;
-        _attachmentProcessing = attachmentProcessing;
+        _processingQueue = processingQueue;
         _cache = cache;
         _publisher = publisher;
     }
@@ -108,10 +108,10 @@ public class CommentService : ICommentService
         }
 
         // An image is saved as "Processing" and still has to be decoded and resized.
-        // For now it is done right here, inside the request.
+        // That is heavy, so it goes to the queue and the user gets the answer without waiting.
         if (attachment?.Status == AttachmentStatus.Processing)
         {
-            await _attachmentProcessing.ProcessAsync(attachment.Id, cancellationToken);
+            await _processingQueue.EnqueueAsync(attachment.Id, cancellationToken);
         }
 
         var response = CommentResponse.From(comment, user);

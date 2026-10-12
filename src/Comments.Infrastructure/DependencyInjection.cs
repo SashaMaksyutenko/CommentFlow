@@ -72,6 +72,8 @@ public static class DependencyInjection
     // for RabbitMQ and for the in-memory queue
     private static void AddMessaging(IServiceCollection services, string? rabbitMqConnectionString)
     {
+        services.AddScoped<IAttachmentProcessingQueue, MassTransitAttachmentProcessingQueue>();
+
         services.AddMassTransit(config =>
         {
             config.AddConsumer<ProcessAttachmentConsumer>();
