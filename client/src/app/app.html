@@ -1,3 +1,9 @@
 <main>
   <h1>{{ title() }}</h1>
+
+  @if (loadFailed()) {
+    <p>Could not load comments. Is the API running?</p>
+  } @else if (totalCount() !== null) {
+    <p>Total comments: {{ totalCount() }}</p>
+  }
 </main>
