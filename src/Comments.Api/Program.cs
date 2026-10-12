@@ -18,6 +18,7 @@ var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, builder.Conf
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("CommentsDb"),
     builder.Configuration.GetConnectionString("Redis"),
+    builder.Configuration.GetConnectionString("RabbitMq"),
     uploadsPath);
 
 builder.Services.AddScoped<IUserService, UserService>();

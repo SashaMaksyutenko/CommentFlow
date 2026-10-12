@@ -13,7 +13,8 @@ public class ApiFactory : WebApplicationFactory<Program>
             "ConnectionStrings:CommentsDb",
             "Server=127.0.0.1,1;Database=CommentsDb;User Id=sa;Password=unused;Connect Timeout=1;TrustServerCertificate=True");
 
-        // Empty = the API uses its in-memory cache instead of Redis
+        // Empty = the API uses its in-memory cache and in-memory queue instead of Redis and RabbitMQ
         builder.UseSetting("ConnectionStrings:Redis", "");
+        builder.UseSetting("ConnectionStrings:RabbitMq", "");
     }
 }

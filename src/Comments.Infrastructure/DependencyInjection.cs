@@ -6,8 +6,10 @@ using Comments.Infrastructure.Caching;
 using Comments.Infrastructure.Captcha;
 using Comments.Infrastructure.Files;
 using Comments.Infrastructure.Images;
+using Comments.Infrastructure.Messaging;
 using Comments.Infrastructure.Persistence;
 using Comments.Infrastructure.Repositories;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +21,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         string? connectionString,
         string? redisConnectionString,
+        string? rabbitMqConnectionString,
         string uploadsPath)
     {
         // Fail fast: without a connection string the API cannot work at all.
@@ -60,6 +63,49 @@ public static class DependencyInjection
         services.AddSingleton<IImageProcessor, MagickImageProcessor>();
         services.AddSingleton<IFileStorage>(new LocalFileStorage(uploadsPath));
 
+        AddMessaging(services, rabbitMqConnectionString);
+
         return services;
+    }
+
+    // MassTransit hides the queue behind its own API, so the consumer is the same
+    // for RabbitMQ and for the in-memory queue
+    private static void AddMessaging(IServiceCollection services, string? rabbitMqConnectionString)
+    {
+        services.AddMassTransit(config =>
+        {
+            config.AddConsumer<ProcessAttachmentConsumer>();
+
+            // Queue names like "process-attachment" instead of "ProcessAttachment"
+            config.SetKebabCaseEndpointNameFormatter();
+
+            if (string.IsNullOrWhiteSpace(rabbitMqConnectionString))
+            {
+                // No RabbitMQ configured: the queue lives inside this process (enough for tests)
+                config.UsingInMemory((context, bus) =>
+                {
+                    bus.UseMessageRetry(RetryFailedMessages);
+                    bus.ConfigureEndpoints(context);
+                });
+            }
+            else
+            {
+                config.UsingRabbitMq((context, bus) =>
+                {
+                    bus.Host(new Uri(rabbitMqConnectionString));
+                    bus.UseMessageRetry(RetryFailedMessages);
+
+                    // Creates a queue for every registered consumer
+                    bus.ConfigureEndpoints(context);
+                });
+            }
+        });
+    }
+
+    // If a consumer throws (e.g. the database is down for a moment), the message is tried
+    // 3 more times with 5 seconds between. After that it goes to a separate "_error" queue.
+    private static void RetryFailedMessages(IRetryConfigurator retry)
+    {
+        retry.Interval(3, TimeSpan.FromSeconds(5));
     }
 }
