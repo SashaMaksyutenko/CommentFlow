@@ -1,0 +1,35 @@
+.comment-form {
+  max-width: 40rem;
+  margin-bottom: 2rem;
+}
+
+.field {
+  margin-bottom: 0.75rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+input,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.4rem;
+  border: 1px solid #999;
+  font: inherit;
+}
+
+/* Angular puts these classes on the field itself: wrong value, and the visitor has already left it */
+input.ng-invalid.ng-touched,
+textarea.ng-invalid.ng-touched {
+  border-color: #b00020;
+}
+
+.error {
+  margin: 0.25rem 0 0;
+  color: #b00020;
+  font-size: 0.9rem;
+}
