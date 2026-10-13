@@ -13,6 +13,10 @@ public interface ICommentService
         string? userAgent,
         CancellationToken cancellationToken);
 
+    // Checks and cleans the text the same way CreateAsync does, but saves nothing.
+    // Not async: it works only with the string, no database or cache.
+    CommentPreviewResponse Preview(PreviewCommentRequest request);
+
     Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken);
 
     // Returns null if the comment doesn't exist

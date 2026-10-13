@@ -59,6 +59,16 @@ public class CommentsController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, comment);
     }
 
+    // Shows how the text will look after saving. Nothing is stored and no captcha is needed.
+    // Example: POST /api/comments/preview with JSON { "text": "Hi <i>all</i>" }
+    // A forbidden or unclosed tag gives the same 400 with the "Text" error as a real comment.
+    [HttpPost("preview")]
+    [EnableRateLimiting(RateLimitingExtensions.PreviewPolicy)]
+    public ActionResult<CommentPreviewResponse> Preview([FromBody] PreviewCommentRequest request)
+    {
+        return Ok(_commentService.Preview(request));
+    }
+
     // IFormFile is an ASP.NET type, the Application layer gets plain bytes
     private static async Task<UploadedFile> ReadFileAsync(IFormFile file, CancellationToken cancellationToken)
     {

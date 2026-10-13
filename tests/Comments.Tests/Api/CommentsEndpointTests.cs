@@ -286,6 +286,9 @@ public class CommentsEndpointTests : IClassFixture<ApiFactory>
             return Task.FromResult(new CommentResponse(1, null, request.UserName, request.Email, request.HomePage, request.Text, DateTime.UtcNow));
         }
 
+        // The preview endpoint is tested with the real service in CommentPreviewEndpointTests
+        public CommentPreviewResponse Preview(PreviewCommentRequest request) => new(request.Text);
+
         public Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken)
         {
             LastQuery = query;

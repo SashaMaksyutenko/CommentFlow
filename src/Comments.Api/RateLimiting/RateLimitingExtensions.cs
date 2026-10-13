@@ -7,18 +7,21 @@ public static class RateLimitingExtensions
 {
     public const string CaptchaPolicy = "captcha";
     public const string CommentsPolicy = "comments";
+    public const string PreviewPolicy = "preview";
 
     // Limits are per client IP and per minute. Reading comments is not limited.
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
         var captchaPerMinute = configuration.GetValue("RateLimits:CaptchaPerMinute", 30);
         var commentsPerMinute = configuration.GetValue("RateLimits:CommentsPerMinute", 10);
+        var previewPerMinute = configuration.GetValue("RateLimits:PreviewPerMinute", 60);
 
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.AddPolicy(CaptchaPolicy, context => PerClientPerMinute(context, captchaPerMinute));
             options.AddPolicy(CommentsPolicy, context => PerClientPerMinute(context, commentsPerMinute));
+            options.AddPolicy(PreviewPolicy, context => PerClientPerMinute(context, previewPerMinute));
         });
 
         return services;

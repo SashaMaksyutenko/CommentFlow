@@ -59,6 +59,27 @@ public class CommentServiceTests
     }
 
     [Fact]
+    public void Preview_ValidText_ReturnsCleanedTextAndTouchesNothingElse()
+    {
+        var preview = _service.Preview(new PreviewCommentRequest { Text = "  2 < 3, <I>right</I>?  " });
+
+        Assert.Equal("2 &lt; 3, <i>right</i>?", preview.Text);
+        Assert.Equal(0, _captcha.CallCount);
+        Assert.Equal(0, _users.CallCount);
+        Assert.Empty(_comments.Added);
+    }
+
+    [Fact]
+    public void Preview_ForbiddenTag_ThrowsForTextField()
+    {
+        var ex = Assert.Throws<FieldValidationException>(() =>
+            _service.Preview(new PreviewCommentRequest { Text = "<b>bold</b>" }));
+
+        Assert.Equal(nameof(PreviewCommentRequest.Text), ex.Field);
+        Assert.Contains("not allowed", ex.Message);
+    }
+
+    [Fact]
     public async Task Create_WrongCaptcha_ThrowsAndSavesNothing()
     {
         _captcha.IsValid = false;

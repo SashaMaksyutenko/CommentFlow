@@ -122,6 +122,17 @@ public class CommentService : ICommentService
         return response;
     }
 
+    public CommentPreviewResponse Preview(PreviewCommentRequest request)
+    {
+        // The same check and the same error as in CreateAsync, so the preview never lies
+        if (!_sanitizer.TrySanitize(request.Text, out var text, out var textError))
+        {
+            throw new FieldValidationException(nameof(PreviewCommentRequest.Text), textError);
+        }
+
+        return new CommentPreviewResponse(text);
+    }
+
     public async Task<PagedResponse<CommentResponse>> GetTopLevelAsync(GetCommentsQuery query, CancellationToken cancellationToken)
     {
         var cached = await _cache.GetPageAsync(query, cancellationToken);
