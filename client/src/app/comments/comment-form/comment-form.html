@@ -1,6 +1,13 @@
 <form class="comment-form" [formGroup]="form" (ngSubmit)="submit()">
   <h2>Add a comment</h2>
 
+  @if (replyTarget.target(); as target) {
+    <p class="replying">
+      Replying to <strong>{{ target.userName }}</strong>
+      <button type="button" (click)="replyTarget.clear()">Cancel reply</button>
+    </p>
+  }
+
   <div class="field">
     <label for="userName">User Name *</label>
     <input id="userName" type="text" formControlName="userName" autocomplete="nickname" aria-describedby="userName-error" />
@@ -27,7 +34,7 @@
 
   <div class="field">
     <label for="text">Text *</label>
-    <textarea id="text" formControlName="text" rows="5" aria-describedby="text-error"></textarea>
+    <textarea #textField id="text" formControlName="text" rows="5" aria-describedby="text-error"></textarea>
     @if (errorOf('text'); as error) {
       <p id="text-error" class="error">{{ error }}</p>
     }

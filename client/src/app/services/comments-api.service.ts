@@ -42,6 +42,11 @@ export class CommentsApiService {
       body.set('homePage', homePage);
     }
 
+    // Only a reply has a parent
+    if (comment.parentId !== null) {
+      body.set('parentId', String(comment.parentId));
+    }
+
     return this.http.post<CommentModel>(this.commentsUrl, body);
   }
 }

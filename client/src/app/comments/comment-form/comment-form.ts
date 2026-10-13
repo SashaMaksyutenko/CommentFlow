@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
+import { ReplyTargetService } from '../../services/reply-target.service';
 import { CaptchaField } from '../captcha-field/captcha-field';
 import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
 
@@ -33,11 +34,17 @@ export class CommentForm {
   private readonly api = inject(CommentsApiService);
   private readonly events = inject(CommentEventsService);
 
+  // Which comment is being answered, if any. The template shows it above the fields.
+  protected readonly replyTarget = inject(ReplyTargetService);
+
   // "Non nullable" means an empty field is '' and never null
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
   // The CAPTCHA field from the template, to ask it for a new picture
   private readonly captchaField = viewChild.required(CaptchaField);
+
+  // The <textarea> from the template, to put the cursor into it
+  private readonly textField = viewChild.required<ElementRef<HTMLTextAreaElement>>('textField');
 
   // What happened with the last sending: nothing yet, in progress, done or refused
   protected readonly status = signal<'idle' | 'sending' | 'sent' | 'failed'>('idle');
@@ -56,6 +63,16 @@ export class CommentForm {
     captchaAnswer: ['', [notBlank, Validators.maxLength(MAX_LENGTH.captchaAnswer)]],
   });
 
+  constructor() {
+    // Runs every time a Reply button is pressed somewhere on the page: the cursor goes to the
+    // text field. The browser scrolls to a field that gets the cursor, so the form comes into view.
+    effect(() => {
+      if (this.replyTarget.target() !== null) {
+        this.textField().nativeElement.focus();
+      }
+    });
+  }
+
   protected submit(): void {
     if (this.form.invalid) {
       // Show the errors of the fields the visitor has not been in yet
@@ -63,13 +80,18 @@ export class CommentForm {
       return;
     }
 
+    // null when this is a new top-level comment and not a reply
+    const parentId = this.replyTarget.target()?.id ?? null;
+
     this.status.set('sending');
-    this.api.createComment(this.form.getRawValue()).subscribe({
+    this.api.createComment({ ...this.form.getRawValue(), parentId }).subscribe({
       next: (comment) => {
         this.status.set('sent');
         // The name, e-mail and home page stay for the next comment
         this.form.controls.text.reset();
         this.captchaField().reload();
+        // The reply is sent, the next comment is an ordinary one again
+        this.replyTarget.clear();
         // The rest of the page (the table) finds out about the new comment from here
         this.events.notifyCreated(comment);
       },

@@ -3,6 +3,7 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
 import { CommentEventsService } from '../../services/comment-events.service';
+import { ReplyTargetService } from '../../services/reply-target.service';
 import { CommentForm } from './comment-form';
 
 describe('CommentForm', () => {
@@ -300,6 +301,63 @@ describe('CommentForm', () => {
 
       expect(alertText()).toContain('Too many comments');
       expect(field('captchaAnswer').value).toBe('ABC123');
+    });
+
+    // The comment the visitor pressed Reply on
+    const answered: CommentModel = { ...created, id: 7, userName: 'Olena2' };
+
+    async function pressReplyOn(comment: CommentModel): Promise<void> {
+      TestBed.inject(ReplyTargetService).replyTo(comment);
+      await fixture.whenStable();
+    }
+
+    it('shows whose comment is answered and puts the cursor into the text field', async () => {
+      await pressReplyOn(answered);
+
+      expect(element.querySelector('.replying')?.textContent).toContain('Replying to Olena2');
+      expect(document.activeElement).toBe(field('text'));
+    });
+
+    it('sends the id of the answered comment and then goes back to a new comment', async () => {
+      await pressReplyOn(answered);
+      fillCorrectly();
+      submit();
+
+      const request = postRequest();
+      expect((request.request.body as FormData).get('parentId')).toBe('7');
+      request.flush({ ...created, id: 8, parentId: 7 }, { status: 201, statusText: 'Created' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(element.querySelector('.replying')).toBeNull();
+      expect(TestBed.inject(ReplyTargetService).target()).toBeNull();
+    });
+
+    it('sends no parent when the comment is not a reply', () => {
+      fillCorrectly();
+      submit();
+
+      expect((postRequest().request.body as FormData).has('parentId')).toBe(false);
+    });
+
+    it('goes back to a new comment when the reply is cancelled', async () => {
+      await pressReplyOn(answered);
+
+      element.querySelector<HTMLButtonElement>('.replying button')!.click();
+      await fixture.whenStable();
+
+      expect(element.querySelector('.replying')).toBeNull();
+      expect(TestBed.inject(ReplyTargetService).target()).toBeNull();
+    });
+
+    it('stays in the reply mode when the server refuses the reply', async () => {
+      await pressReplyOn(answered);
+      fillCorrectly();
+      submit();
+
+      apiRefuses({ Text: ['Tag <b> is not allowed.'] });
+      await fixture.whenStable();
+
+      expect(element.querySelector('.replying')?.textContent).toContain('Replying to Olena2');
     });
 
     it('asks to try later and gets a new picture when the server breaks', async () => {

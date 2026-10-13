@@ -82,6 +82,7 @@ describe('CommentsApiService', () => {
       email: 'sasha@example.com',
       homePage: ' https://example.com ',
       text: 'Hi <i>all</i>',
+      parentId: null,
       captchaId: 'captcha-id',
       captchaAnswer: 'ABC123',
     };
@@ -107,6 +108,18 @@ describe('CommentsApiService', () => {
       const request = http.expectOne('/api/comments');
       expect((request.request.body as FormData).has('homePage')).toBe(false);
       request.flush({});
+    });
+
+    it('sends the id of the parent only for a reply', () => {
+      service.createComment(newComment).subscribe();
+      const topLevel = http.expectOne('/api/comments');
+      expect((topLevel.request.body as FormData).has('parentId')).toBe(false);
+      topLevel.flush({});
+
+      service.createComment({ ...newComment, parentId: 7 }).subscribe();
+      const reply = http.expectOne('/api/comments');
+      expect((reply.request.body as FormData).get('parentId')).toBe('7');
+      reply.flush({});
     });
   });
 });

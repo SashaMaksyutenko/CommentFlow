@@ -6,6 +6,9 @@ export interface NewComment {
   // Empty when the visitor has no home page
   homePage: string;
   text: string;
+
+  // The comment that is answered, null for a top-level comment
+  parentId: number | null;
   captchaId: string;
   captchaAnswer: string;
 }
