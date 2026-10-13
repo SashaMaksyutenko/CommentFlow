@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CommentsApiService } from '../../services/comments-api.service';
 import { CaptchaField } from '../captcha-field/captcha-field';
 import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
 
@@ -12,8 +13,16 @@ type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'captchaAns
   templateUrl: './comment-form.html',
 })
 export class CommentForm {
+  private readonly api = inject(CommentsApiService);
+
   // "Non nullable" means an empty field is '' and never null
   private readonly formBuilder = inject(NonNullableFormBuilder);
+
+  // The CAPTCHA field from the template, to ask it for a new picture
+  private readonly captchaField = viewChild.required(CaptchaField);
+
+  // What happened with the last sending: nothing yet, in progress, done or refused
+  protected readonly status = signal<'idle' | 'sending' | 'sent' | 'failed'>('idle');
 
   // Every field: its starting value and the rules it must pass
   protected readonly form = this.formBuilder.group({
@@ -33,7 +42,20 @@ export class CommentForm {
       return;
     }
 
-    // Sending the comment to the API is added later, together with the CAPTCHA
+    this.status.set('sending');
+    this.api.createComment(this.form.getRawValue()).subscribe({
+      next: () => {
+        this.status.set('sent');
+        // The name, e-mail and home page stay for the next comment
+        this.form.controls.text.reset();
+        this.captchaField().reload();
+      },
+      error: () => {
+        this.status.set('failed');
+        // A CAPTCHA works only once, so the next try needs a new picture
+        this.captchaField().reload();
+      },
+    });
   }
 
   // The message under a field. Empty while the field is fine or the visitor has not left it yet.

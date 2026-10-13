@@ -40,5 +40,15 @@
     }
   </div>
 
-  <button type="submit">Add comment</button>
+  @if (status() === 'sent') {
+    <p class="result success" role="status">Your comment was added.</p>
+  }
+  @if (status() === 'failed') {
+    <p class="result error" role="alert">Could not send the comment. Enter the new CAPTCHA and try again.</p>
+  }
+
+  <!-- Turned off while the request is running, so the comment is not sent twice -->
+  <button type="submit" [disabled]="status() === 'sending'">
+    {{ status() === 'sending' ? 'Sending…' : 'Add comment' }}
+  </button>
 </form>

@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { CommentModel } from '../models/comment.model';
+import { NewComment } from '../models/new-comment.model';
 import { PagedResponse } from '../models/paging.model';
 import { CommentsApiService } from './comments-api.service';
 
@@ -73,5 +74,39 @@ describe('CommentsApiService', () => {
 
     expect(request.request.method).toBe('GET');
     expect(result).toEqual([reply]);
+  });
+
+  describe('createComment', () => {
+    const newComment: NewComment = {
+      userName: 'Sasha1',
+      email: 'sasha@example.com',
+      homePage: ' https://example.com ',
+      text: 'Hi <i>all</i>',
+      captchaId: 'captcha-id',
+      captchaAnswer: 'ABC123',
+    };
+
+    it('posts the comment as form data', () => {
+      service.createComment(newComment).subscribe();
+
+      const request = http.expectOne('/api/comments');
+      const body = request.request.body as FormData;
+      expect(request.request.method).toBe('POST');
+      expect(body.get('userName')).toBe('Sasha1');
+      expect(body.get('email')).toBe('sasha@example.com');
+      expect(body.get('homePage')).toBe('https://example.com');
+      expect(body.get('text')).toBe('Hi <i>all</i>');
+      expect(body.get('captchaId')).toBe('captcha-id');
+      expect(body.get('captchaAnswer')).toBe('ABC123');
+      request.flush({});
+    });
+
+    it('leaves the home page out when it is empty', () => {
+      service.createComment({ ...newComment, homePage: '' }).subscribe();
+
+      const request = http.expectOne('/api/comments');
+      expect((request.request.body as FormData).has('homePage')).toBe(false);
+      request.flush({});
+    });
   });
 });

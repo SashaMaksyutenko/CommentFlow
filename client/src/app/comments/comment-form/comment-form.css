@@ -33,3 +33,13 @@ textarea.ng-invalid.ng-touched {
   color: #b00020;
   font-size: 0.9rem;
 }
+
+.success {
+  color: #1b6e2c;
+}
+
+/* The line about how the sending went, right above the button */
+.result {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}

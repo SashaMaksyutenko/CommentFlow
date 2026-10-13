@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { CommentModel } from '../../models/comment.model';
 import { CommentForm } from './comment-form';
 
 describe('CommentForm', () => {
@@ -121,15 +122,104 @@ describe('CommentForm', () => {
     expect(errorOf('userName')).toBe('');
   });
 
-  it('shows no errors when everything is filled in correctly', () => {
-    fill('userName', 'Sasha1');
-    fill('email', 'sasha@example.com');
-    fill('homePage', 'https://example.com');
-    fill('text', 'Hello <strong>all</strong>');
-    fill('captchaAnswer', 'ABC123');
+  describe('sending', () => {
+    // What the API returns for a created comment
+    const created: CommentModel = {
+      id: 5,
+      parentId: null,
+      userName: 'Sasha1',
+      email: 'sasha@example.com',
+      homePage: 'https://example.com',
+      text: 'Hello <strong>all</strong>',
+      createdAt: '2026-10-01T10:27:00Z',
+      attachment: null,
+      replies: [],
+    };
 
-    submit();
+    function fillCorrectly(): void {
+      fill('userName', 'Sasha1');
+      fill('email', 'sasha@example.com');
+      fill('homePage', 'https://example.com');
+      fill('text', 'Hello <strong>all</strong>');
+      fill('captchaAnswer', 'ABC123');
+    }
 
-    expect(element.querySelectorAll('.error').length).toBe(0);
+    // The POST the form has just sent
+    function postRequest(): TestRequest {
+      return http.expectOne((req) => req.method === 'POST' && req.url === '/api/comments');
+    }
+
+    function submitButton(): HTMLButtonElement {
+      return element.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    }
+
+    function captchaPicture(): string | null | undefined {
+      return element.querySelector('app-captcha-field img')?.getAttribute('src');
+    }
+
+    it('sends nothing while the form has errors', () => {
+      fillCorrectly();
+      fill('email', 'sasha@example');
+
+      submit();
+
+      http.expectNone((req) => req.method === 'POST');
+    });
+
+    it('sends what the visitor typed together with the id of the CAPTCHA picture', () => {
+      fillCorrectly();
+
+      submit();
+
+      const body = postRequest().request.body as FormData;
+      expect(body.get('userName')).toBe('Sasha1');
+      expect(body.get('email')).toBe('sasha@example.com');
+      expect(body.get('homePage')).toBe('https://example.com');
+      expect(body.get('text')).toBe('Hello <strong>all</strong>');
+      expect(body.get('captchaId')).toBe('captcha-id');
+      expect(body.get('captchaAnswer')).toBe('ABC123');
+    });
+
+    it('turns the button off until the server answers', async () => {
+      fillCorrectly();
+      submit();
+      const request = postRequest();
+      expect(submitButton().disabled).toBe(true);
+      expect(submitButton().textContent).toContain('Sending');
+
+      request.flush(created, { status: 201, statusText: 'Created' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(submitButton().disabled).toBe(false);
+      expect(submitButton().textContent).toContain('Add comment');
+    });
+
+    it('after success keeps the name, clears the text and shows a new CAPTCHA', async () => {
+      fillCorrectly();
+      submit();
+
+      postRequest().flush(created, { status: 201, statusText: 'Created' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(element.querySelector('[role="status"]')?.textContent).toContain('Your comment was added');
+      expect(field('userName').value).toBe('Sasha1');
+      expect(field('text').value).toBe('');
+      expect(field('captchaAnswer').value).toBe('');
+      expect(captchaPicture()).toBe('data:image/png;base64,BBBB');
+      expect(element.querySelectorAll('.error').length).toBe(0);
+    });
+
+    it('when the server refuses, keeps the text and shows a message and a new CAPTCHA', async () => {
+      fillCorrectly();
+      submit();
+
+      postRequest().flush({ errors: { CaptchaAnswer: ['Wrong captcha.'] } }, { status: 400, statusText: 'Bad Request' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(element.querySelector('[role="alert"]')?.textContent).toContain('Could not send the comment');
+      expect(field('text').value).toBe('Hello <strong>all</strong>');
+      expect(field('captchaAnswer').value).toBe('');
+      expect(captchaPicture()).toBe('data:image/png;base64,BBBB');
+    });
   });
 });
