@@ -1,0 +1,32 @@
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.picture {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+img {
+  border: 1px solid #999;
+}
+
+input {
+  box-sizing: border-box;
+  width: 12rem;
+  padding: 0.4rem;
+  border: 1px solid #999;
+  font: inherit;
+}
+
+input.ng-invalid.ng-touched {
+  border-color: #b00020;
+}
+
+.error {
+  color: #b00020;
+}

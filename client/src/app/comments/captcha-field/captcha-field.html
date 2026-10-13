@@ -1,0 +1,21 @@
+<label for="captchaAnswer">CAPTCHA *</label>
+
+<div class="picture">
+  @if (image(); as picture) {
+    <img [src]="picture" alt="Picture with the characters to type below" width="180" height="60" />
+  } @else if (loadFailed()) {
+    <span class="error" role="alert">Could not load the picture.</span>
+  } @else {
+    <span>Loading the picture…</span>
+  }
+
+  <button type="button" (click)="reload()">New picture</button>
+</div>
+
+<input
+  id="captchaAnswer"
+  type="text"
+  [formControl]="answerControl()"
+  autocomplete="off"
+  aria-describedby="captchaAnswer-error"
+/>
