@@ -1,0 +1,8 @@
+<div class="toolbar" role="toolbar" aria-label="Text formatting">
+  @for (button of buttons; track button.tag) {
+    <!-- mousedown is cancelled so the cursor stays in the text field while a button is pressed -->
+    <button type="button" [title]="button.title" (mousedown)="$event.preventDefault()" (click)="insert(button.tag)">
+      [{{ button.tag }}]
+    </button>
+  }
+</div>

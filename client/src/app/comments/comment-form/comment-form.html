@@ -34,6 +34,7 @@
 
   <div class="field">
     <label for="text">Text *</label>
+    <app-tag-toolbar [field]="textField" [control]="form.controls.text" />
     <textarea #textField id="text" formControlName="text" rows="5" aria-describedby="text-error"></textarea>
     @if (errorOf('text'); as error) {
       <p id="text-error" class="error">{{ error }}</p>

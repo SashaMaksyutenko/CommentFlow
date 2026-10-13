@@ -85,6 +85,18 @@ describe('CommentForm', () => {
     expect(errorOf('captchaAnswer')).toBe('');
   });
 
+  it('has the tag buttons that put a tag into the text', () => {
+    fill('text', 'Hello ');
+    field('text').setSelectionRange(6, 6);
+
+    const buttons = Array.from(element.querySelectorAll<HTMLButtonElement>('app-tag-toolbar button'));
+    buttons.find((button) => button.textContent?.trim() === '[i]')!.click();
+    fixture.detectChanges();
+
+    expect(field('text').value).toBe('Hello <i></i>');
+    expect(errorOf('text')).toBe('');
+  });
+
   it('shows the error of a field only after the visitor leaves it', () => {
     field('userName').value = 'Sasha 1';
     field('userName').dispatchEvent(new Event('input'));

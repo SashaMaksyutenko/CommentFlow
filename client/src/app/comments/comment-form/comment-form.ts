@@ -5,6 +5,7 @@ import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { CaptchaField } from '../captcha-field/captcha-field';
+import { TagToolbar } from '../tag-toolbar/tag-toolbar';
 import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
 
 type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'captchaAnswer';
@@ -25,7 +26,7 @@ function fieldErrorsOf(response: HttpErrorResponse): Record<string, string[]> {
 }
 
 @Component({
-  imports: [ReactiveFormsModule, CaptchaField],
+  imports: [ReactiveFormsModule, CaptchaField, TagToolbar],
   selector: 'app-comment-form',
   styleUrl: './comment-form.css',
   templateUrl: './comment-form.html',

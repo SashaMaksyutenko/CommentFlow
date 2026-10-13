@@ -1,0 +1,9 @@
+.toolbar {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+button {
+  font-family: monospace;
+}
