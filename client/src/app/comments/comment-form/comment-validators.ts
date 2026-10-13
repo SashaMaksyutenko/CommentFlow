@@ -8,7 +8,7 @@ export const USER_NAME_PATTERN = /^[A-Za-z0-9]+$/;
 // The domain needs a dot and an ending of 2 or more letters
 export const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
-export const MAX_LENGTH = { userName: 50, email: 254, homePage: 2048, text: 5000 };
+export const MAX_LENGTH = { userName: 50, email: 254, homePage: 2048, text: 5000, captchaAnswer: 20 };
 
 // Like Validators.required, but a value of spaces only counts as empty too
 export function notBlank(control: AbstractControl<string>): ValidationErrors | null {

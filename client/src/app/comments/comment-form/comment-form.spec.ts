@@ -1,9 +1,18 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentForm } from './comment-form';
 
 describe('CommentForm', () => {
   let fixture: ComponentFixture<CommentForm>;
+  let http: HttpTestingController;
   let element: HTMLElement;
+
+  // Answers the request of the CAPTCHA field the way the API would
+  async function apiReturnsCaptcha(image: string): Promise<void> {
+    http.expectOne('/api/captcha').flush({ id: 'captcha-id', image });
+    await fixture.whenStable();
+  }
 
   function field(id: string): HTMLInputElement | HTMLTextAreaElement {
     return element.querySelector<HTMLInputElement | HTMLTextAreaElement>(`#${id}`)!;
@@ -28,12 +37,19 @@ describe('CommentForm', () => {
   }
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [CommentForm] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [CommentForm],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
 
+    http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(CommentForm);
     element = fixture.nativeElement;
-    fixture.detectChanges();
+    fixture.detectChanges(); // the CAPTCHA field inside the form asks for a picture
+    await apiReturnsCaptcha('data:image/png;base64,AAAA');
   });
+
+  afterEach(() => http.verify());
 
   it('shows no errors before the visitor does anything', () => {
     expect(element.querySelectorAll('.error').length).toBe(0);
@@ -45,7 +61,25 @@ describe('CommentForm', () => {
     expect(errorOf('userName')).toBe('This field is required.');
     expect(errorOf('email')).toBe('This field is required.');
     expect(errorOf('text')).toBe('This field is required.');
+    expect(errorOf('captchaAnswer')).toBe('This field is required.');
     expect(errorOf('homePage')).toBe('');
+  });
+
+  it('shows the CAPTCHA picture and the field for the answer', () => {
+    const picture = element.querySelector('app-captcha-field img');
+
+    expect(picture?.getAttribute('src')).toBe('data:image/png;base64,AAAA');
+    expect(field('captchaAnswer')).not.toBeNull();
+  });
+
+  it('forgets the CAPTCHA error when the visitor asks for a new picture', async () => {
+    submit();
+    expect(errorOf('captchaAnswer')).not.toBe('');
+
+    element.querySelector<HTMLButtonElement>('app-captcha-field button')!.click();
+    await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+    expect(errorOf('captchaAnswer')).toBe('');
   });
 
   it('shows the error of a field only after the visitor leaves it', () => {
@@ -92,6 +126,7 @@ describe('CommentForm', () => {
     fill('email', 'sasha@example.com');
     fill('homePage', 'https://example.com');
     fill('text', 'Hello <strong>all</strong>');
+    fill('captchaAnswer', 'ABC123');
 
     submit();
 

@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CaptchaField } from '../captcha-field/captcha-field';
 import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
 
-type CommentFormField = 'userName' | 'email' | 'homePage' | 'text';
+type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'captchaAnswer';
 
 @Component({
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CaptchaField],
   selector: 'app-comment-form',
   styleUrl: './comment-form.css',
   templateUrl: './comment-form.html',
@@ -20,6 +21,9 @@ export class CommentForm {
     email: ['', [notBlank, Validators.maxLength(MAX_LENGTH.email), Validators.pattern(EMAIL_PATTERN)]],
     homePage: ['', [Validators.maxLength(MAX_LENGTH.homePage), httpUrl]],
     text: ['', [notBlank, Validators.maxLength(MAX_LENGTH.text)]],
+    // Filled in by the CAPTCHA field when a picture is loaded. No picture, no sending.
+    captchaId: ['', Validators.required],
+    captchaAnswer: ['', [notBlank, Validators.maxLength(MAX_LENGTH.captchaAnswer)]],
   });
 
   protected submit(): void {

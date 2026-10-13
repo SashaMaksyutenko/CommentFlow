@@ -33,5 +33,12 @@
     }
   </div>
 
+  <div class="field">
+    <app-captcha-field [idControl]="form.controls.captchaId" [answerControl]="form.controls.captchaAnswer" />
+    @if (errorOf('captchaAnswer'); as error) {
+      <p id="captchaAnswer-error" class="error">{{ error }}</p>
+    }
+  </div>
+
   <button type="submit">Add comment</button>
 </form>
