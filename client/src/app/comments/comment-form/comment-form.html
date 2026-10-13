@@ -44,7 +44,7 @@
     <p class="result success" role="status">Your comment was added.</p>
   }
   @if (status() === 'failed') {
-    <p class="result error" role="alert">Could not send the comment. Enter the new CAPTCHA and try again.</p>
+    <p class="result error" role="alert">{{ failure() }}</p>
   }
 
   <!-- Turned off while the request is running, so the comment is not sent twice -->

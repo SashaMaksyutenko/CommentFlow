@@ -234,17 +234,83 @@ describe('CommentForm', () => {
       expect(heard).toEqual([]);
     });
 
-    it('when the server refuses, keeps the text and shows a message and a new CAPTCHA', async () => {
+    // The API refuses the comment with messages by field, the way it really does
+    function apiRefuses(errors: Record<string, string[]>): void {
+      postRequest().flush({ status: 400, errors }, { status: 400, statusText: 'Bad Request' });
+    }
+
+    function alertText(): string {
+      return element.querySelector('[role="alert"]')?.textContent?.trim() ?? '';
+    }
+
+    it('shows a wrong CAPTCHA under its field, keeps the text and gets a new picture', async () => {
       fillCorrectly();
       submit();
 
-      postRequest().flush({ errors: { CaptchaAnswer: ['Wrong captcha.'] } }, { status: 400, statusText: 'Bad Request' });
+      apiRefuses({ CaptchaAnswer: ['Wrong or expired captcha. Please enter the new one.'] });
       await apiReturnsCaptcha('data:image/png;base64,BBBB');
 
-      expect(element.querySelector('[role="alert"]')?.textContent).toContain('Could not send the comment');
+      expect(errorOf('captchaAnswer')).toBe('Wrong or expired captcha. Please enter the new one.');
+      expect(alertText()).toBe('The comment was not added. Check the fields marked in red.');
       expect(field('text').value).toBe('Hello <strong>all</strong>');
       expect(field('captchaAnswer').value).toBe('');
       expect(captchaPicture()).toBe('data:image/png;base64,BBBB');
+    });
+
+    it('shows what is wrong with the text and keeps the same CAPTCHA', async () => {
+      fillCorrectly();
+      submit();
+
+      apiRefuses({ Text: ['Tag <b> is not allowed.'] });
+      await fixture.whenStable();
+
+      // No request for another picture: afterEach checks that nothing else was sent
+      expect(errorOf('text')).toBe('Tag <b> is not allowed.');
+      expect(field('captchaAnswer').value).toBe('ABC123');
+      expect(captchaPicture()).toBe('data:image/png;base64,AAAA');
+    });
+
+    it('forgets the message of the server when the visitor changes the field', async () => {
+      fillCorrectly();
+      submit();
+      apiRefuses({ Text: ['Tag <b> is not allowed.'] });
+      await fixture.whenStable();
+
+      fill('text', 'Hello all');
+
+      expect(errorOf('text')).toBe('');
+    });
+
+    it('shows a message that belongs to no field above the button', async () => {
+      fillCorrectly();
+      submit();
+
+      apiRefuses({ ParentId: ['The comment you are replying to does not exist.'] });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(alertText()).toBe('The comment you are replying to does not exist.');
+    });
+
+    it('explains the limit and keeps the same CAPTCHA when there are too many comments', async () => {
+      fillCorrectly();
+      submit();
+
+      postRequest().flush(null, { status: 429, statusText: 'Too Many Requests' });
+      await fixture.whenStable();
+
+      expect(alertText()).toContain('Too many comments');
+      expect(field('captchaAnswer').value).toBe('ABC123');
+    });
+
+    it('asks to try later and gets a new picture when the server breaks', async () => {
+      fillCorrectly();
+      submit();
+
+      postRequest().flush('error', { status: 500, statusText: 'Server Error' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(alertText()).toBe('Could not send the comment. Try again later.');
+      expect(element.querySelectorAll('.field .error').length).toBe(0);
     });
   });
 });

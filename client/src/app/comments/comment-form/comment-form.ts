@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommentEventsService } from '../../services/comment-events.service';
@@ -6,6 +7,21 @@ import { CaptchaField } from '../captcha-field/captcha-field';
 import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
 
 type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'captchaAnswer';
+
+// The fields that have a place for a message under them
+const FORM_FIELDS: CommentFormField[] = ['userName', 'email', 'homePage', 'text', 'captchaAnswer'];
+
+// The body of a 400 answer from the API: messages by field name,
+// for example { "Text": ["Tag <b> is not allowed."] }
+interface ValidationProblem {
+  errors?: Record<string, string[]>;
+}
+
+// The messages by field from a 400 answer. Empty for any other answer.
+function fieldErrorsOf(response: HttpErrorResponse): Record<string, string[]> {
+  const problem = response.error as ValidationProblem | null;
+  return response.status === 400 && problem?.errors ? problem.errors : {};
+}
 
 @Component({
   imports: [ReactiveFormsModule, CaptchaField],
@@ -25,6 +41,9 @@ export class CommentForm {
 
   // What happened with the last sending: nothing yet, in progress, done or refused
   protected readonly status = signal<'idle' | 'sending' | 'sent' | 'failed'>('idle');
+
+  // Why the last sending was refused, shown above the button
+  protected readonly failure = signal('');
 
   // Every field: its starting value and the rules it must pass
   protected readonly form = this.formBuilder.group({
@@ -54,12 +73,55 @@ export class CommentForm {
         // The rest of the page (the table) finds out about the new comment from here
         this.events.notifyCreated(comment);
       },
-      error: () => {
+      error: (response: HttpErrorResponse) => {
         this.status.set('failed');
-        // A CAPTCHA works only once, so the next try needs a new picture
-        this.captchaField().reload();
+
+        // The picture is still good in two cases: the limit stopped the request before any check,
+        // or the text is the only thing refused (the server checks the text before the CAPTCHA).
+        // In every other case the picture is used up and a new one is needed.
+        const refused = Object.keys(fieldErrorsOf(response));
+        const onlyTextRefused = refused.length === 1 && refused[0].toLowerCase() === 'text';
+        const captchaStillGood = response.status === 429 || onlyTextRefused;
+        if (!captchaStillGood) {
+          this.captchaField().reload();
+        }
+
+        // After the reload: a new picture clears the CAPTCHA field together with its error
+        this.showFailure(response);
       },
     });
+  }
+
+  // Puts the reason of a refusal on the screen: under the fields and above the button
+  private showFailure(response: HttpErrorResponse): void {
+    if (response.status === 429) {
+      this.failure.set('Too many comments in a short time. Wait a minute and try again.');
+      return;
+    }
+
+    const errors = Object.entries(fieldErrorsOf(response));
+    if (errors.length === 0) {
+      this.failure.set('Could not send the comment. Try again later.');
+      return;
+    }
+
+    // Messages about things that are not fields of this form
+    const otherMessages: string[] = [];
+
+    for (const [serverName, messages] of errors) {
+      // "UserName" from the server is "userName" here
+      const field = FORM_FIELDS.find((name) => name.toLowerCase() === serverName.toLowerCase());
+      if (field) {
+        this.form.controls[field].setErrors({ server: messages[0] });
+        this.form.controls[field].markAsTouched();
+      } else {
+        otherMessages.push(...messages);
+      }
+    }
+
+    this.failure.set(
+      otherMessages.length > 0 ? otherMessages.join(' ') : 'The comment was not added. Check the fields marked in red.',
+    );
   }
 
   // The message under a field. Empty while the field is fine or the visitor has not left it yet.
@@ -67,6 +129,12 @@ export class CommentForm {
     const control = this.form.controls[field];
     if (control.valid || !control.touched) {
       return '';
+    }
+
+    // What the server said about this field. It goes away when the visitor changes the field.
+    const serverMessage: unknown = control.getError('server');
+    if (typeof serverMessage === 'string') {
+      return serverMessage;
     }
 
     if (control.hasError('required')) {
