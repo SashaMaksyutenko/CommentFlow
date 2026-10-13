@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { CommentModel } from '../../models/comment.model';
 import { CommentSortField, CommentsQuery, PagedResponse, SortDirection } from '../../models/paging.model';
+import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { CommentReplies } from '../comment-replies/comment-replies';
 
@@ -14,9 +15,13 @@ import { CommentReplies } from '../comment-replies/comment-replies';
 })
 export class CommentsTable implements OnInit, OnDestroy {
   private readonly api = inject(CommentsApiService);
+  private readonly events = inject(CommentEventsService);
 
   // The request that is running now, if any
   private request?: Subscription;
+
+  // Listening for new comments
+  private createdSubscription?: Subscription;
 
   // Newest first by default (LIFO)
   protected readonly query = signal<CommentsQuery>({ page: 1, sortBy: 'createdAt', sortDirection: 'desc' });
@@ -38,10 +43,19 @@ export class CommentsTable implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.load();
+
+    // A new top-level comment changes the list, so the page that is shown is loaded again.
+    // A reply does not: the table has only top-level comments.
+    this.createdSubscription = this.events.created$.subscribe((comment) => {
+      if (comment.parentId === null) {
+        this.load();
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.request?.unsubscribe();
+    this.createdSubscription?.unsubscribe();
   }
 
   protected sortBy(field: CommentSortField): void {

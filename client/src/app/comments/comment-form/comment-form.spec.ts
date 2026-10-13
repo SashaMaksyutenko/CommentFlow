@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
+import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentForm } from './comment-form';
 
 describe('CommentForm', () => {
@@ -207,6 +208,30 @@ describe('CommentForm', () => {
       expect(field('captchaAnswer').value).toBe('');
       expect(captchaPicture()).toBe('data:image/png;base64,BBBB');
       expect(element.querySelectorAll('.error').length).toBe(0);
+    });
+
+    it('tells the rest of the app about the created comment', async () => {
+      const heard: CommentModel[] = [];
+      TestBed.inject(CommentEventsService).created$.subscribe((comment) => heard.push(comment));
+      fillCorrectly();
+      submit();
+
+      postRequest().flush(created, { status: 201, statusText: 'Created' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(heard).toEqual([created]);
+    });
+
+    it('tells nothing when the server refuses the comment', async () => {
+      const heard: CommentModel[] = [];
+      TestBed.inject(CommentEventsService).created$.subscribe((comment) => heard.push(comment));
+      fillCorrectly();
+      submit();
+
+      postRequest().flush('error', { status: 500, statusText: 'Server Error' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(heard).toEqual([]);
     });
 
     it('when the server refuses, keeps the text and shows a message and a new CAPTCHA', async () => {

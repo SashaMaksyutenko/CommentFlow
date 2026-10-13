@@ -1,5 +1,6 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { CaptchaField } from '../captcha-field/captcha-field';
 import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
@@ -14,6 +15,7 @@ type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'captchaAns
 })
 export class CommentForm {
   private readonly api = inject(CommentsApiService);
+  private readonly events = inject(CommentEventsService);
 
   // "Non nullable" means an empty field is '' and never null
   private readonly formBuilder = inject(NonNullableFormBuilder);
@@ -44,11 +46,13 @@ export class CommentForm {
 
     this.status.set('sending');
     this.api.createComment(this.form.getRawValue()).subscribe({
-      next: () => {
+      next: (comment) => {
         this.status.set('sent');
         // The name, e-mail and home page stay for the next comment
         this.form.controls.text.reset();
         this.captchaField().reload();
+        // The rest of the page (the table) finds out about the new comment from here
+        this.events.notifyCreated(comment);
       },
       error: () => {
         this.status.set('failed');

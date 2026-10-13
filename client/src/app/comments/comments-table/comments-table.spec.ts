@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
+import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsTable } from './comments-table';
 
 describe('CommentsTable', () => {
@@ -293,6 +294,25 @@ describe('CommentsTable', () => {
     expect(element.querySelector('.replies-row')).toBeNull();
     expect(repliesButton(0).textContent).toContain('Replies');
     expect(repliesButton(0).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('loads the shown page again when a top-level comment is created', async () => {
+    await apiReturns([comment({ id: 1 })], 1, 3);
+    button('Next').click();
+    await apiReturns([comment({ id: 1 })], 2, 3);
+
+    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 7, parentId: null }));
+
+    // Still the second page: the visitor stays where they were
+    expect(lastRequest().request.params.get('page')).toBe('2');
+  });
+
+  it('does not load the page again when a reply is created', async () => {
+    await apiReturns([comment({ id: 1 })]);
+
+    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 7, parentId: 1 }));
+
+    http.expectNone((req) => req.url === '/api/comments');
   });
 
   it('can show the replies of several comments at once', async () => {
