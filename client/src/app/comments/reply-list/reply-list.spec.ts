@@ -1,6 +1,7 @@
 import { formatDate } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
+import { ReplyTargetService } from '../../services/reply-target.service';
 import { ReplyList } from './reply-list';
 
 describe('ReplyList', () => {
@@ -69,6 +70,16 @@ describe('ReplyList', () => {
     await show([reply({ replies: [] })]);
 
     expect(element.querySelector('app-reply-list')).toBeNull();
+  });
+
+  it('lets the visitor answer any reply, a nested one too', async () => {
+    const nested = reply({ id: 3, parentId: 2, text: 'Nested' });
+    await show([reply({ id: 2, replies: [nested] })]);
+
+    // The buttons go in the order of the replies on the screen: the first reply, then the nested one
+    element.querySelectorAll<HTMLButtonElement>('.reply-button')[1].click();
+
+    expect(TestBed.inject(ReplyTargetService).target()).toEqual(nested);
   });
 
   it('makes the user name a link only when there is a home page', async () => {

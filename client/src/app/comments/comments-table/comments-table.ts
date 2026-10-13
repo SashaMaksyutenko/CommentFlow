@@ -5,6 +5,7 @@ import { CommentModel } from '../../models/comment.model';
 import { CommentSortField, CommentsQuery, PagedResponse, SortDirection } from '../../models/paging.model';
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
+import { ReplyTargetService } from '../../services/reply-target.service';
 import { CommentReplies } from '../comment-replies/comment-replies';
 
 @Component({
@@ -16,6 +17,9 @@ import { CommentReplies } from '../comment-replies/comment-replies';
 export class CommentsTable implements OnInit, OnDestroy {
   private readonly api = inject(CommentsApiService);
   private readonly events = inject(CommentEventsService);
+
+  // The Reply button of a row tells the comment form whom the visitor answers
+  protected readonly replyTarget = inject(ReplyTargetService);
 
   // The request that is running now, if any
   private request?: Subscription;
@@ -49,8 +53,20 @@ export class CommentsTable implements OnInit, OnDestroy {
     this.createdSubscription = this.events.created$.subscribe((comment) => {
       if (comment.parentId === null) {
         this.load();
+      } else {
+        this.showRepliesOf(comment.parentId);
       }
     });
+  }
+
+  // After someone answers a comment of this page, its replies open, so the answer is seen at once
+  private showRepliesOf(commentId: number): void {
+    const comments = this.page()?.items ?? [];
+    const isOnThisPage = comments.some((comment) => comment.id === commentId);
+
+    if (isOnThisPage && !this.repliesOpen(commentId)) {
+      this.openReplies.update((ids) => [...ids, commentId]);
+    }
   }
 
   ngOnDestroy(): void {

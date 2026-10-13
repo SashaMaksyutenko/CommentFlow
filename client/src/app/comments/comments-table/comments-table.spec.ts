@@ -4,6 +4,7 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
 import { CommentEventsService } from '../../services/comment-events.service';
+import { ReplyTargetService } from '../../services/reply-target.service';
 import { CommentsTable } from './comments-table';
 
 describe('CommentsTable', () => {
@@ -292,7 +293,7 @@ describe('CommentsTable', () => {
     clickReplies(0);
 
     expect(element.querySelector('.replies-row')).toBeNull();
-    expect(repliesButton(0).textContent).toContain('Replies');
+    expect(repliesButton(0).textContent).toContain('Show replies');
     expect(repliesButton(0).getAttribute('aria-expanded')).toBe('false');
   });
 
@@ -307,12 +308,35 @@ describe('CommentsTable', () => {
     expect(lastRequest().request.params.get('page')).toBe('2');
   });
 
-  it('does not load the page again when a reply is created', async () => {
+  it('does nothing when a reply to a comment from another page is created', async () => {
     await apiReturns([comment({ id: 1 })]);
 
-    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 7, parentId: 1 }));
+    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 7, parentId: 99 }));
+    fixture.detectChanges();
 
-    http.expectNone((req) => req.url === '/api/comments');
+    // No new page and no replies: afterEach checks that nothing was requested
+    expect(element.querySelector('.replies-row')).toBeNull();
+  });
+
+  it('opens the replies of a comment when a reply to it is created', async () => {
+    await apiReturns([comment({ id: 1 }), comment({ id: 2 })]);
+
+    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 9, parentId: 2 }));
+    fixture.detectChanges();
+    http.expectOne('/api/comments/2/replies').flush([comment({ id: 9, parentId: 2, text: 'A new reply' })]);
+    await fixture.whenStable();
+
+    expect(repliesButton(1).getAttribute('aria-expanded')).toBe('true');
+    expect(element.querySelector('.replies-row')?.textContent).toContain('A new reply');
+  });
+
+  it('tells the comment form which comment the visitor wants to answer', async () => {
+    const second = comment({ id: 2, userName: 'Olena2' });
+    await apiReturns([comment({ id: 1 }), second]);
+
+    element.querySelectorAll<HTMLButtonElement>('.reply-button')[1].click();
+
+    expect(TestBed.inject(ReplyTargetService).target()).toEqual(second);
   });
 
   it('can show the replies of several comments at once', async () => {

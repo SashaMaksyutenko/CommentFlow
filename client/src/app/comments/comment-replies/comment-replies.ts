@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { CommentModel } from '../../models/comment.model';
+import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { ReplyList } from '../reply-list/reply-list';
 
@@ -13,7 +14,11 @@ import { ReplyList } from '../reply-list/reply-list';
 })
 export class CommentReplies implements OnInit, OnDestroy {
   private readonly api = inject(CommentsApiService);
+  private readonly events = inject(CommentEventsService);
   private request?: Subscription;
+
+  // Listening for new replies
+  private createdSubscription?: Subscription;
 
   readonly commentId = input.required<number>();
 
@@ -23,13 +28,29 @@ export class CommentReplies implements OnInit, OnDestroy {
 
   // Not in the constructor: the input has no value there yet
   ngOnInit(): void {
-    this.request = this.api.getReplies(this.commentId()).subscribe({
-      next: (replies) => this.replies.set(replies),
-      error: () => this.loadFailed.set(true),
+    this.load();
+
+    // A new reply may belong to this thread, so the thread is loaded again.
+    // The replies that are already shown stay on the screen until the new ones arrive.
+    this.createdSubscription = this.events.created$.subscribe((comment) => {
+      if (comment.parentId !== null) {
+        this.load();
+      }
     });
   }
 
   ngOnDestroy(): void {
     this.request?.unsubscribe();
+    this.createdSubscription?.unsubscribe();
+  }
+
+  private load(): void {
+    this.loadFailed.set(false);
+
+    this.request?.unsubscribe();
+    this.request = this.api.getReplies(this.commentId()).subscribe({
+      next: (replies) => this.replies.set(replies),
+      error: () => this.loadFailed.set(true),
+    });
   }
 }

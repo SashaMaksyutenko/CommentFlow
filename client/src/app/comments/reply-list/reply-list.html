@@ -10,6 +10,7 @@
           }
           <span>{{ reply.email }}</span>
           <time [attr.datetime]="reply.createdAt">{{ reply.createdAt | date: 'dd.MM.yy HH:mm' }}</time>
+          <button type="button" class="reply-button" (click)="replyTarget.replyTo(reply)">Reply</button>
         </header>
         <!-- Same as in the table: the text has HTML tags and Angular cleans it before inserting -->
         <div class="text" [innerHTML]="reply.text"></div>

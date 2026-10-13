@@ -42,8 +42,9 @@
                   [attr.aria-expanded]="repliesOpen(comment.id)"
                   (click)="toggleReplies(comment.id)"
                 >
-                  {{ repliesOpen(comment.id) ? 'Hide replies' : 'Replies' }}
+                  {{ repliesOpen(comment.id) ? 'Hide replies' : 'Show replies' }}
                 </button>
+                <button type="button" class="reply-button" (click)="replyTarget.replyTo(comment)">Reply</button>
               </td>
             </tr>
             <!-- The replies are loaded only when the visitor opens them -->

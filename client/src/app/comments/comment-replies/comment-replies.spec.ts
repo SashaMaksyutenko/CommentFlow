@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
+import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentReplies } from './comment-replies';
 
 describe('CommentReplies', () => {
@@ -83,6 +84,26 @@ describe('CommentReplies', () => {
     await fixture.whenStable();
 
     expect(element.querySelector('[role="alert"]')?.textContent).toContain('Could not load replies');
+  });
+
+  it('loads the replies again when a reply is created and keeps the old ones meanwhile', async () => {
+    await apiReturns([reply({ id: 8, text: 'First' })]);
+
+    TestBed.inject(CommentEventsService).notifyCreated(reply({ id: 9, parentId: 8 }));
+    fixture.detectChanges();
+    expect(element.textContent).toContain('First');
+    expect(element.textContent).not.toContain('Loading replies');
+    await apiReturns([reply({ id: 8, text: 'First', replies: [reply({ id: 9, parentId: 8, text: 'Second' })] })]);
+
+    expect(element.textContent).toContain('Second');
+  });
+
+  it('does not load the replies again when a top-level comment is created', async () => {
+    await apiReturns([]);
+
+    TestBed.inject(CommentEventsService).notifyCreated(reply({ id: 10, parentId: null }));
+
+    http.expectNone('/api/comments/7/replies');
   });
 
   it('drops the request when the component is removed before the answer', () => {
