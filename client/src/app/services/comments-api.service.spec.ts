@@ -76,6 +76,18 @@ describe('CommentsApiService', () => {
     expect(result).toEqual([reply]);
   });
 
+  it('asks the API how the text will look and returns only the text', () => {
+    let result: string | undefined;
+
+    service.previewComment('Hi <i>all</i> & you').subscribe((r) => (result = r));
+    const request = http.expectOne('/api/comments/preview');
+    request.flush({ text: 'Hi <i>all</i> &amp; you' });
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ text: 'Hi <i>all</i> & you' });
+    expect(result).toBe('Hi <i>all</i> &amp; you');
+  });
+
   describe('createComment', () => {
     const newComment: NewComment = {
       userName: 'Sasha1',

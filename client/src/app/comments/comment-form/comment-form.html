@@ -39,6 +39,7 @@
     @if (errorOf('text'); as error) {
       <p id="text-error" class="error">{{ error }}</p>
     }
+    <app-comment-preview [control]="form.controls.text" />
   </div>
 
   <div class="field">

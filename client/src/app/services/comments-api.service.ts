@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { CommentModel } from '../models/comment.model';
 import { NewComment } from '../models/new-comment.model';
@@ -25,6 +25,14 @@ export class CommentsApiService {
   // All replies under a comment as a tree: every reply has its own "replies"
   getReplies(commentId: number): Observable<CommentModel[]> {
     return this.http.get<CommentModel[]>(`${this.commentsUrl}/${commentId}/replies`);
+  }
+
+  // The text as the server would save it: only the allowed tags, everything else encoded.
+  // Nothing is saved. A forbidden or unclosed tag gives a 400 answer, the same as for a real comment.
+  previewComment(text: string): Observable<string> {
+    return this.http
+      .post<{ text: string }>(`${this.commentsUrl}/preview`, { text })
+      .pipe(map((preview) => preview.text));
   }
 
   // Goes as multipart/form-data and not JSON, because the API takes a file in the same request

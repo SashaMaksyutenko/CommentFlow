@@ -5,28 +5,18 @@ import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { CaptchaField } from '../captcha-field/captcha-field';
+import { CommentPreview } from '../comment-preview/comment-preview';
 import { TagToolbar } from '../tag-toolbar/tag-toolbar';
 import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
+import { fieldErrorsOf } from './server-errors';
 
 type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'captchaAnswer';
 
 // The fields that have a place for a message under them
 const FORM_FIELDS: CommentFormField[] = ['userName', 'email', 'homePage', 'text', 'captchaAnswer'];
 
-// The body of a 400 answer from the API: messages by field name,
-// for example { "Text": ["Tag <b> is not allowed."] }
-interface ValidationProblem {
-  errors?: Record<string, string[]>;
-}
-
-// The messages by field from a 400 answer. Empty for any other answer.
-function fieldErrorsOf(response: HttpErrorResponse): Record<string, string[]> {
-  const problem = response.error as ValidationProblem | null;
-  return response.status === 400 && problem?.errors ? problem.errors : {};
-}
-
 @Component({
-  imports: [ReactiveFormsModule, CaptchaField, TagToolbar],
+  imports: [ReactiveFormsModule, CaptchaField, CommentPreview, TagToolbar],
   selector: 'app-comment-form',
   styleUrl: './comment-form.css',
   templateUrl: './comment-form.html',

@@ -1,0 +1,28 @@
+:host {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.preview {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border: 1px dashed #999;
+}
+
+h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* The same as in the table: keep the line breaks, don't let a long word stretch the block */
+.text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  margin: 0.25rem 0 0;
+  color: #b00020;
+  font-size: 0.9rem;
+}

@@ -1,0 +1,13 @@
+<button type="button" [disabled]="loading()" (click)="show()">{{ loading() ? 'Loading…' : 'Preview' }}</button>
+
+@if (failure()) {
+  <p class="error" role="alert">{{ failure() }}</p>
+}
+
+@if (html() !== null) {
+  <section class="preview" aria-label="Preview">
+    <h3>Preview</h3>
+    <!-- Already cleaned by the server, and Angular cleans it once more before inserting -->
+    <div class="text" [innerHTML]="html()"></div>
+  </section>
+}

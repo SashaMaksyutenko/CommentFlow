@@ -97,6 +97,29 @@ describe('CommentForm', () => {
     expect(errorOf('text')).toBe('');
   });
 
+  it('shows a preview of the text under the text field', async () => {
+    fill('text', 'Hello <i>all</i>');
+
+    element.querySelector<HTMLButtonElement>('app-comment-preview button')!.click();
+    http.expectOne('/api/comments/preview').flush({ text: 'Hello <i>all</i>' });
+    await fixture.whenStable();
+
+    expect(element.querySelector('app-comment-preview .preview i')?.textContent).toBe('all');
+  });
+
+  it('shows a tag error from the preview under the text field', async () => {
+    fill('text', 'Hello <b>all</b>');
+
+    element.querySelector<HTMLButtonElement>('app-comment-preview button')!.click();
+    http
+      .expectOne('/api/comments/preview')
+      .flush({ status: 400, errors: { Text: ['Tag <b> is not allowed.'] } }, { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable();
+
+    expect(errorOf('text')).toBe('Tag <b> is not allowed.');
+    expect(element.querySelector('app-comment-preview .preview')).toBeNull();
+  });
+
   it('shows the error of a field only after the visitor leaves it', () => {
     field('userName').value = 'Sasha 1';
     field('userName').dispatchEvent(new Event('input'));
