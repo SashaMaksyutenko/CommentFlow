@@ -55,6 +55,11 @@ export class CommentsApiService {
       body.set('parentId', String(comment.parentId));
     }
 
+    // The file goes in the same request; the server keeps its original name to show it later
+    if (comment.file !== null) {
+      body.set('file', comment.file, comment.file.name);
+    }
+
     return this.http.post<CommentModel>(this.commentsUrl, body);
   }
 }

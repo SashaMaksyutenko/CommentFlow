@@ -9,6 +9,9 @@ export interface NewComment {
 
   // The comment that is answered, null for a top-level comment
   parentId: number | null;
+
+  // An image or a TXT file, null when nothing is attached
+  file: File | null;
   captchaId: string;
   captchaAnswer: string;
 }

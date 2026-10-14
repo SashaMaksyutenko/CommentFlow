@@ -60,13 +60,16 @@ describe('AttachmentField', () => {
     expect(element.querySelector('.remove')).toBeNull();
   });
 
-  it('clears the browser field when the form clears the control', async () => {
+  it('clears the browser field and the Remove button when the form clears the control', async () => {
     await choose([photo]);
     // What the browser shows after a file is chosen
     Object.defineProperty(fileInput, 'value', { value: 'C:\\fakepath\\photo.png', writable: true });
 
+    // Not a click on the page: the form does it from code after sending
     control.reset();
+    await fixture.whenStable();
 
     expect(fileInput.value).toBe('');
+    expect(element.querySelector('.remove')).toBeNull();
   });
 });

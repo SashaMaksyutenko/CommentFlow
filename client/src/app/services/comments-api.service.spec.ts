@@ -95,6 +95,7 @@ describe('CommentsApiService', () => {
       homePage: ' https://example.com ',
       text: 'Hi <i>all</i>',
       parentId: null,
+      file: null,
       captchaId: 'captcha-id',
       captchaAnswer: 'ABC123',
     };
@@ -120,6 +121,21 @@ describe('CommentsApiService', () => {
       const request = http.expectOne('/api/comments');
       expect((request.request.body as FormData).has('homePage')).toBe(false);
       request.flush({});
+    });
+
+    it('sends the file with its name only when one is attached', () => {
+      service.createComment(newComment).subscribe();
+      const withoutFile = http.expectOne('/api/comments');
+      expect((withoutFile.request.body as FormData).has('file')).toBe(false);
+      withoutFile.flush({});
+
+      const photo = new File(['picture'], 'photo.png', { type: 'image/png' });
+      service.createComment({ ...newComment, file: photo }).subscribe();
+      const withFile = http.expectOne('/api/comments');
+      const sent = (withFile.request.body as FormData).get('file') as File;
+      expect(sent.name).toBe('photo.png');
+      expect(sent.size).toBe(photo.size);
+      withFile.flush({});
     });
 
     it('sends the id of the parent only for a reply', () => {

@@ -7,8 +7,8 @@
   aria-describedby="file-hint file-error"
   (change)="choose(fileInput.files)"
 />
-@if (control().value; as file) {
-  <button type="button" class="remove" (click)="remove()">Remove {{ file.name }}</button>
+@if (file(); as chosen) {
+  <button type="button" class="remove" (click)="remove()">Remove {{ chosen.name }}</button>
 }
 <p id="file-hint" class="hint">
   A JPG, GIF or PNG image up to 5 MB (a bigger picture than 320×240 is made smaller) or a TXT file up to 100 KB.

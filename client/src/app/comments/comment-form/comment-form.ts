@@ -7,16 +7,17 @@ import { ReplyTargetService } from '../../services/reply-target.service';
 import { CaptchaField } from '../captcha-field/captcha-field';
 import { CommentPreview } from '../comment-preview/comment-preview';
 import { TagToolbar } from '../tag-toolbar/tag-toolbar';
-import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
+import { AttachmentField } from '../attachment-field/attachment-field';
+import { EMAIL_PATTERN, MAX_LENGTH, USER_NAME_PATTERN, allowedFile, httpUrl, notBlank } from './comment-validators';
 import { fieldErrorsOf } from './server-errors';
 
-type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'captchaAnswer';
+type CommentFormField = 'userName' | 'email' | 'homePage' | 'text' | 'file' | 'captchaAnswer';
 
 // The fields that have a place for a message under them
-const FORM_FIELDS: CommentFormField[] = ['userName', 'email', 'homePage', 'text', 'captchaAnswer'];
+const FORM_FIELDS: CommentFormField[] = ['userName', 'email', 'homePage', 'text', 'file', 'captchaAnswer'];
 
 @Component({
-  imports: [ReactiveFormsModule, CaptchaField, CommentPreview, TagToolbar],
+  imports: [ReactiveFormsModule, AttachmentField, CaptchaField, CommentPreview, TagToolbar],
   selector: 'app-comment-form',
   styleUrl: './comment-form.css',
   templateUrl: './comment-form.html',
@@ -49,6 +50,8 @@ export class CommentForm {
     email: ['', [notBlank, Validators.maxLength(MAX_LENGTH.email), Validators.pattern(EMAIL_PATTERN)]],
     homePage: ['', [Validators.maxLength(MAX_LENGTH.homePage), httpUrl]],
     text: ['', [notBlank, Validators.maxLength(MAX_LENGTH.text)]],
+    // The chosen file, null while nothing is attached
+    file: [null as File | null, allowedFile],
     // Filled in by the CAPTCHA field when a picture is loaded. No picture, no sending.
     captchaId: ['', Validators.required],
     captchaAnswer: ['', [notBlank, Validators.maxLength(MAX_LENGTH.captchaAnswer)]],
@@ -80,6 +83,7 @@ export class CommentForm {
         this.status.set('sent');
         // The name, e-mail and home page stay for the next comment
         this.form.controls.text.reset();
+        this.form.controls.file.reset();
         this.captchaField().reload();
         // The reply is sent, the next comment is an ordinary one again
         this.replyTarget.clear();
@@ -153,7 +157,7 @@ export class CommentForm {
     if (control.hasError('required')) {
       return 'This field is required.';
     }
-    if (control.hasError('maxlength')) {
+    if (field !== 'file' && control.hasError('maxlength')) {
       return `No more than ${MAX_LENGTH[field]} characters.`;
     }
     if (control.hasError('pattern')) {
@@ -161,6 +165,15 @@ export class CommentForm {
     }
     if (control.hasError('httpUrl')) {
       return 'The address must start with http:// or https://.';
+    }
+    if (control.hasError('fileType')) {
+      return 'Only JPG, GIF, PNG images and TXT files are allowed.';
+    }
+    if (control.hasError('imageTooBig')) {
+      return 'An image can be up to 5 MB.';
+    }
+    if (control.hasError('textFileTooBig')) {
+      return 'A TXT file can be up to 100 KB.';
     }
 
     return '';

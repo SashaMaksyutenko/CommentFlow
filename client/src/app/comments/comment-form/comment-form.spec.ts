@@ -215,6 +215,51 @@ describe('CommentForm', () => {
       expect(body.get('text')).toBe('Hello <strong>all</strong>');
       expect(body.get('captchaId')).toBe('captcha-id');
       expect(body.get('captchaAnswer')).toBe('ABC123');
+      expect(body.has('file')).toBe(false);
+    });
+
+    // A test can't pick a file the way a visitor does, so the chosen files are set by hand
+    function attach(file: File): void {
+      const input = element.querySelector<HTMLInputElement>('input[type="file"]')!;
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    }
+
+    it('sends the chosen file with the comment and clears the file field after success', async () => {
+      fillCorrectly();
+      attach(new File(['picture'], 'photo.png', { type: 'image/png' }));
+
+      submit();
+      const request = postRequest();
+      expect(((request.request.body as FormData).get('file') as File).name).toBe('photo.png');
+      request.flush(created, { status: 201, statusText: 'Created' });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(element.querySelector('app-attachment-field .remove')).toBeNull();
+    });
+
+    it('does not send a file of a wrong kind and says why', () => {
+      fillCorrectly();
+      attach(new File(['MZ'], 'virus.exe'));
+
+      submit();
+
+      expect(errorOf('file')).toBe('Only JPG, GIF, PNG images and TXT files are allowed.');
+      http.expectNone((req) => req.method === 'POST');
+    });
+
+    it('shows a file error of the server under the file field and gets a new picture', async () => {
+      fillCorrectly();
+      attach(new File(['not really a picture'], 'photo.png'));
+      submit();
+
+      // The server looks inside the file, and it does that after the CAPTCHA
+      apiRefuses({ File: ['The file is not a valid image.'] });
+      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+      expect(errorOf('file')).toBe('The file is not a valid image.');
+      expect(captchaPicture()).toBe('data:image/png;base64,BBBB');
     });
 
     it('turns the button off until the server answers', async () => {
