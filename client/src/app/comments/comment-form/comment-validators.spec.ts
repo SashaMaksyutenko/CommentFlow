@@ -1,5 +1,13 @@
 import { FormControl } from '@angular/forms';
-import { EMAIL_PATTERN, USER_NAME_PATTERN, httpUrl, notBlank } from './comment-validators';
+import {
+  EMAIL_PATTERN,
+  MAX_IMAGE_SIZE,
+  MAX_TEXT_FILE_SIZE,
+  USER_NAME_PATTERN,
+  allowedFile,
+  httpUrl,
+  notBlank,
+} from './comment-validators';
 
 describe('comment validators', () => {
   // A form control with the given text, the way a validator gets it from the form
@@ -37,6 +45,35 @@ describe('comment validators', () => {
 
     it('accepts a value with some text', () => {
       expect(notBlank(control(' Hi '))).toBeNull();
+    });
+  });
+
+  describe('allowedFile', () => {
+    // A file with the given name and size in bytes, the content does not matter here
+    function file(name: string, size: number): FormControl<File | null> {
+      return new FormControl<File | null>(new File([new Uint8Array(size)], name));
+    }
+
+    it('accepts no file, the field is optional', () => {
+      expect(allowedFile(new FormControl<File | null>(null))).toBeNull();
+    });
+
+    it.each(['photo.jpg', 'photo.JPEG', 'photo.png', 'anim.gif', 'notes.txt'])('accepts "%s"', (name) => {
+      expect(allowedFile(file(name, 10))).toBeNull();
+    });
+
+    it.each(['virus.exe', 'photo.bmp', 'page.html', 'photo.png.exe', 'no-extension'])('refuses "%s"', (name) => {
+      expect(allowedFile(file(name, 10))).toEqual({ fileType: true });
+    });
+
+    it('accepts a TXT file of exactly 100 KB and refuses a bigger one', () => {
+      expect(allowedFile(file('notes.txt', MAX_TEXT_FILE_SIZE))).toBeNull();
+      expect(allowedFile(file('notes.txt', MAX_TEXT_FILE_SIZE + 1))).toEqual({ textFileTooBig: true });
+    });
+
+    it('accepts an image of exactly 5 MB and refuses a bigger one', () => {
+      expect(allowedFile(file('photo.png', MAX_IMAGE_SIZE))).toBeNull();
+      expect(allowedFile(file('photo.png', MAX_IMAGE_SIZE + 1))).toEqual({ imageTooBig: true });
     });
   });
 

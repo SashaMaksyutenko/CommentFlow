@@ -1,0 +1,15 @@
+<label for="file">Attachment</label>
+<input
+  #fileInput
+  id="file"
+  type="file"
+  accept=".jpg,.jpeg,.png,.gif,.txt"
+  aria-describedby="file-hint file-error"
+  (change)="choose(fileInput.files)"
+/>
+@if (control().value; as file) {
+  <button type="button" class="remove" (click)="remove()">Remove {{ file.name }}</button>
+}
+<p id="file-hint" class="hint">
+  A JPG, GIF or PNG image up to 5 MB (a bigger picture than 320×240 is made smaller) or a TXT file up to 100 KB.
+</p>

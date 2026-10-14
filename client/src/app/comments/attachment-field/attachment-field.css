@@ -1,0 +1,15 @@
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.remove {
+  margin-left: 0.5rem;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  color: #555;
+  font-size: 0.85rem;
+}
