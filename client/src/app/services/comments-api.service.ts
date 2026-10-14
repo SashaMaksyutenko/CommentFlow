@@ -27,6 +27,11 @@ export class CommentsApiService {
     return this.http.get<CommentModel[]>(`${this.commentsUrl}/${commentId}/replies`);
   }
 
+  // The content of a TXT attachment, to show it in the lightbox. The url comes from AttachmentModel.
+  getAttachmentText(url: string): Observable<string> {
+    return this.http.get(url, { responseType: 'text' });
+  }
+
   // The text as the server would save it: only the allowed tags, everything else encoded.
   // Nothing is saved. A forbidden or unclosed tag gives a 400 answer, the same as for a real comment.
   previewComment(text: string): Observable<string> {

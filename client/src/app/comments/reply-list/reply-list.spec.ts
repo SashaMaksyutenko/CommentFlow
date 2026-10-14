@@ -1,4 +1,6 @@
 import { formatDate } from '@angular/common';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
 import { ReplyTargetService } from '../../services/reply-target.service';
@@ -30,7 +32,11 @@ describe('ReplyList', () => {
   }
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [ReplyList] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [ReplyList],
+      // A file of a reply can be opened in the lightbox, which loads TXT files over HTTP
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ReplyList);
     element = fixture.nativeElement;
@@ -95,7 +101,7 @@ describe('ReplyList', () => {
     await show([reply({ id: 2, attachment }), reply({ id: 3, attachment: null })]);
 
     const replies = element.querySelectorAll('.reply');
-    expect(replies[0].querySelector('app-attachment-view a')?.textContent).toBe('notes.txt');
+    expect(replies[0].querySelector('app-attachment-view .text-file')?.textContent).toBe('notes.txt');
     expect(replies[1].querySelector('app-attachment-view')).toBeNull();
   });
 

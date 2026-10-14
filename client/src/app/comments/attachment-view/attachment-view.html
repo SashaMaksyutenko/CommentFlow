@@ -4,11 +4,11 @@
 @switch (file.status) {
   @case ('Ready') {
     @if (file.type === 'Image') {
-      <a class="image" [href]="file.url" target="_blank" rel="noopener">
+      <button type="button" class="thumbnail" [attr.aria-label]="'Open ' + file.fileName" (click)="open()">
         <img [src]="file.url" [alt]="file.fileName" loading="lazy" />
-      </a>
+      </button>
     } @else {
-      <a class="text-file" [href]="file.url" target="_blank" rel="noopener">{{ file.fileName }}</a>
+      <button type="button" class="text-file" (click)="open()">{{ file.fileName }}</button>
     }
   }
   @case ('Processing') {
@@ -17,4 +17,35 @@
   @case ('Failed') {
     <p class="note failed">The image {{ file.fileName }} could not be processed.</p>
   }
+}
+
+@if (isOpen()) {
+  <!-- Escape or a click on the dark area closes the lightbox, a click on the file itself does not.
+       tabindex="-1": a click on the picture keeps the focus here and not on the page behind,
+       otherwise Escape would stop working after that click. -->
+  <div
+    class="lightbox"
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+    [attr.aria-label]="file.fileName"
+    (click)="close()"
+    (keydown.escape)="close()"
+  >
+    <div class="content" (click)="$event.stopPropagation()">
+      <button #closeButton type="button" class="close" aria-label="Close" (click)="close()">×</button>
+
+      @if (file.type === 'Image') {
+        <img [src]="file.url" [alt]="file.fileName" />
+      } @else if (textFailed()) {
+        <p class="note failed">Could not load the file.</p>
+      } @else if (text() !== null) {
+        <pre>{{ text() }}</pre>
+      } @else {
+        <p class="note">Loading…</p>
+      }
+
+      <p class="caption">{{ file.fileName }}</p>
+    </div>
+  </div>
 }

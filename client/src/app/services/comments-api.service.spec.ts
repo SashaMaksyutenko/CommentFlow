@@ -76,6 +76,17 @@ describe('CommentsApiService', () => {
     expect(result).toEqual([reply]);
   });
 
+  it('loads a TXT attachment as plain text', () => {
+    let result: string | undefined;
+
+    service.getAttachmentText('/uploads/abc.txt').subscribe((r) => (result = r));
+    const request = http.expectOne('/uploads/abc.txt');
+    request.flush('Hello\nfrom a file');
+
+    expect(request.request.responseType).toBe('text');
+    expect(result).toBe('Hello\nfrom a file');
+  });
+
   it('asks the API how the text will look and returns only the text', () => {
     let result: string | undefined;
 
