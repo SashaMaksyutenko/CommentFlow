@@ -35,6 +35,7 @@ public class CommentPreviewEndpointTests : IClassFixture<ApiFactory>
     [InlineData("<b>bold</b>", "not allowed")]
     [InlineData("<script>alert(1)</script>", "not allowed")]
     [InlineData("<i>not closed", "not closed")]
+    [InlineData("Hello <a href='https://example.com' title='Example'></a>", "has no text")]
     public async Task Post_BadTags_Returns400WithTextError(string text, string expectedMessagePart)
     {
         var client = _factory.CreateClient();

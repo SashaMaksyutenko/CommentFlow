@@ -35,11 +35,16 @@ public class CommentTextSanitizer : ICommentTextSanitizer
     {
         var openTags = new Stack<string>();
         var hasText = false;
+
+        // Links can't be inside other links, so one flag is enough for the link that is open now
+        var linkHasText = false;
         var position = 0;
 
         foreach (Match tag in TagRegex.Matches(input))
         {
-            hasText |= AppendText(output, input[position..tag.Index]);
+            var isText = AppendText(output, input[position..tag.Index]);
+            hasText |= isText;
+            linkHasText |= isText && openTags.Contains("a");
             position = tag.Index + tag.Length;
 
             var isClosing = tag.Groups[1].Value == "/";
@@ -56,6 +61,12 @@ public class CommentTextSanitizer : ICommentTextSanitizer
                 if (openTags.Count == 0 || openTags.Peek() != name || !string.IsNullOrWhiteSpace(attributes))
                 {
                     return $"Closing tag </{name}> does not match any open tag.";
+                }
+
+                // An empty link is invisible on the page: nobody can see it or click it
+                if (name == "a" && !linkHasText)
+                {
+                    return "Link <a> has no text. Put the words to click between <a ...> and </a>.";
                 }
 
                 openTags.Pop();
@@ -80,6 +91,8 @@ public class CommentTextSanitizer : ICommentTextSanitizer
                 {
                     return linkError;
                 }
+
+                linkHasText = false;
             }
             else
             {

@@ -30,6 +30,8 @@ public class CommentTextSanitizerTests
     [InlineData("<a href=\"https://example.com\" title=\"Example\">link</a>", "<a href=\"https://example.com\" title=\"Example\">link</a>")]
     [InlineData("<a title='Single' href='http://example.com'>link</a>", "<a href=\"http://example.com\" title=\"Single\">link</a>")]
     [InlineData("<a href=\"https://example.com\" title=\"&quot; onclick=&quot;x\">link</a>", "<a href=\"https://example.com\" title=\"&quot; onclick=&quot;x\">link</a>")]
+    [InlineData("<a href=\"https://example.com\"><i>inside</i></a>", "<a href=\"https://example.com\"><i>inside</i></a>")]
+    [InlineData("<a href=\"https://a.com\">one</a> <a href=\"https://b.com\">two</a>", "<a href=\"https://a.com\">one</a> <a href=\"https://b.com\">two</a>")]
     public void ValidLink_IsRebuiltSafely(string input, string expected)
     {
         Assert.True(_sanitizer.TrySanitize(input, out var html, out var error), error);
@@ -54,6 +56,10 @@ public class CommentTextSanitizerTests
     [InlineData("<a href=\"https://a.com\"><a href=\"https://b.com\">x</a></a>", "inside other links")]
     [InlineData("<i></i>", "empty")]
     [InlineData("<i>   </i>", "empty")]
+    [InlineData("Hello <a href=\"https://example.com\" title=\"Example\"></a>", "has no text")]
+    [InlineData("Hello <a href=\"https://example.com\">   </a>", "has no text")]
+    [InlineData("Hello <a href=\"https://example.com\"><i></i></a>", "has no text")]
+    [InlineData("<a href=\"https://a.com\">one</a> <a href=\"https://b.com\"></a>", "has no text")]
     public void InvalidText_IsRejectedWithMessage(string input, string expectedMessagePart)
     {
         Assert.False(_sanitizer.TrySanitize(input, out var html, out var error));
