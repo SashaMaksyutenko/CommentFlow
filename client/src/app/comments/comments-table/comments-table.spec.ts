@@ -333,6 +333,27 @@ describe('CommentsTable', () => {
     expect(lastRequest().request.params.get('page')).toBe('1');
   });
 
+  it('shows a processed image of a comment without loading the page again', async () => {
+    const attachment: CommentModel['attachment'] = {
+      url: '/uploads/abc.png',
+      fileName: 'photo.png',
+      type: 'Image',
+      status: 'Processing',
+      contentType: 'image/png',
+      size: 50000,
+    };
+    await apiReturns([comment({ id: 1 }), comment({ id: 2, attachment })]);
+    expect(element.textContent).toContain('is being processed');
+
+    TestBed.inject(CommentEventsService).notifyAttachmentProcessed(2, { ...attachment!, status: 'Ready' });
+    await fixture.whenStable();
+
+    // No request: afterEach checks that nothing else was sent
+    const rows = element.querySelectorAll('tbody tr');
+    expect(rows[1].querySelector('app-attachment-view img')?.getAttribute('src')).toBe('/uploads/abc.png');
+    expect(element.textContent).not.toContain('is being processed');
+  });
+
   it('does nothing when a reply to a comment from another page is created', async () => {
     await apiReturns([comment({ id: 1 })]);
 

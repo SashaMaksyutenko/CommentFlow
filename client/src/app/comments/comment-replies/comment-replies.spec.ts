@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { CommentModel } from '../../models/comment.model';
+import { AttachmentModel, CommentModel } from '../../models/comment.model';
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentReplies } from './comment-replies';
 
@@ -105,6 +105,26 @@ describe('CommentReplies', () => {
 
     await apiReturns([reply({ id: 8, text: 'First', replies: [reply({ id: 9, parentId: 8, text: 'From Olena' })] })]);
     expect(element.textContent).toContain('From Olena');
+  });
+
+  it('shows a processed image of a reply without loading the thread again', async () => {
+    const attachment: AttachmentModel = {
+      url: '/uploads/abc.png',
+      fileName: 'photo.png',
+      type: 'Image',
+      status: 'Processing',
+      contentType: 'image/png',
+      size: 50000,
+    };
+    const nested = reply({ id: 9, parentId: 8, attachment });
+    await apiReturns([reply({ id: 8, replies: [nested] })]);
+    expect(element.textContent).toContain('is being processed');
+
+    TestBed.inject(CommentEventsService).notifyAttachmentProcessed(9, { ...attachment, status: 'Ready' });
+    await fixture.whenStable();
+
+    // No request: afterEach checks that nothing else was sent
+    expect(element.querySelector('app-attachment-view img')?.getAttribute('src')).toBe('/uploads/abc.png');
   });
 
   it('does not load the replies again when a top-level comment is created', async () => {

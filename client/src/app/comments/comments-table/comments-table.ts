@@ -8,6 +8,7 @@ import { CommentsApiService } from '../../services/comments-api.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { AttachmentView } from '../attachment-view/attachment-view';
 import { CommentReplies } from '../comment-replies/comment-replies';
+import { replaceAttachment } from '../replace-attachment';
 
 @Component({
   imports: [DatePipe, AttachmentView, CommentReplies],
@@ -25,8 +26,9 @@ export class CommentsTable implements OnInit, OnDestroy {
   // The request that is running now, if any
   private request?: Subscription;
 
-  // Listening for new comments
+  // Listening for new comments and for processed images
   private createdSubscription?: Subscription;
+  private processedSubscription?: Subscription;
 
   // Newest first by default (LIFO)
   protected readonly query = signal<CommentsQuery>({ page: 1, sortBy: 'createdAt', sortDirection: 'desc' });
@@ -59,6 +61,11 @@ export class CommentsTable implements OnInit, OnDestroy {
         this.showRepliesOf(comment.parentId);
       }
     });
+
+    // An image of a comment on this page is ready: only its attachment changes, nothing is loaded
+    this.processedSubscription = this.events.attachmentProcessed$.subscribe(({ commentId, attachment }) => {
+      this.page.update((page) => page && { ...page, items: replaceAttachment(page.items, commentId, attachment) });
+    });
   }
 
   // After the visitor answers a comment of this page, its replies open, so the answer is seen at once
@@ -74,6 +81,7 @@ export class CommentsTable implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.request?.unsubscribe();
     this.createdSubscription?.unsubscribe();
+    this.processedSubscription?.unsubscribe();
   }
 
   protected sortBy(field: CommentSortField): void {

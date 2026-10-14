@@ -4,6 +4,7 @@ import { CommentModel } from '../../models/comment.model';
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { ReplyList } from '../reply-list/reply-list';
+import { replaceAttachment } from '../replace-attachment';
 
 // Loads the replies of one comment and shows them as a tree
 @Component({
@@ -17,8 +18,9 @@ export class CommentReplies implements OnInit, OnDestroy {
   private readonly events = inject(CommentEventsService);
   private request?: Subscription;
 
-  // Listening for new replies
+  // Listening for new replies and for processed images
   private createdSubscription?: Subscription;
+  private processedSubscription?: Subscription;
 
   readonly commentId = input.required<number>();
 
@@ -37,11 +39,17 @@ export class CommentReplies implements OnInit, OnDestroy {
         this.load();
       }
     });
+
+    // An image of a reply in this thread is ready: only its attachment changes, nothing is loaded
+    this.processedSubscription = this.events.attachmentProcessed$.subscribe(({ commentId, attachment }) => {
+      this.replies.update((replies) => replies && replaceAttachment(replies, commentId, attachment));
+    });
   }
 
   ngOnDestroy(): void {
     this.request?.unsubscribe();
     this.createdSubscription?.unsubscribe();
+    this.processedSubscription?.unsubscribe();
   }
 
   private load(): void {

@@ -1,19 +1,25 @@
 import { TestBed } from '@angular/core/testing';
 import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
-import { CommentModel } from '../models/comment.model';
-import { CommentEventsService, CreatedComment } from './comment-events.service';
+import { AttachmentModel, CommentModel } from '../models/comment.model';
+import { CommentEventsService, CreatedComment, ProcessedAttachment } from './comment-events.service';
 import { CommentsHubService } from './comments-hub.service';
 
 describe('CommentsHubService', () => {
   // Stands in for the real connection: remembers the handlers and lets a test call them
   // the way the server would. Only the parts the service uses are here.
   class FakeConnection {
-    readonly handlers = new Map<string, (comment: CommentModel) => void>();
+    readonly handlers = new Map<string, (...args: never[]) => void>();
     readonly start = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
-    on(methodName: string, handler: (comment: CommentModel) => void): void {
+    on(methodName: string, handler: (...args: never[]) => void): void {
       this.handlers.set(methodName, handler);
     }
+  }
+
+  // What the server does: calls a client method by its name with these arguments
+  function serverCalls(methodName: string, ...args: unknown[]): void {
+    const handler = connection.handlers.get(methodName) as unknown as (...values: unknown[]) => void;
+    handler(...args);
   }
 
   const comment: CommentModel = {
@@ -53,9 +59,26 @@ describe('CommentsHubService', () => {
     const heard: CreatedComment[] = [];
     TestBed.inject(CommentEventsService).created$.subscribe((event) => heard.push(event));
 
-    connection.handlers.get('CommentCreated')!(comment);
+    serverCalls('CommentCreated', comment);
 
     expect(heard).toEqual([{ comment, own: false }]);
+  });
+
+  it('passes on the news that an image of a comment is processed', () => {
+    const heard: ProcessedAttachment[] = [];
+    TestBed.inject(CommentEventsService).attachmentProcessed$.subscribe((event) => heard.push(event));
+    const attachment: AttachmentModel = {
+      url: '/uploads/abc.png',
+      fileName: 'photo.png',
+      type: 'Image',
+      status: 'Ready',
+      contentType: 'image/png',
+      size: 41165,
+    };
+
+    serverCalls('AttachmentProcessed', 7, attachment);
+
+    expect(heard).toEqual([{ commentId: 7, attachment }]);
   });
 
   it('tries the first connection again after 5 seconds when the server is not there yet', async () => {

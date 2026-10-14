@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { environment } from '../../environments/environment';
-import { CommentModel } from '../models/comment.model';
+import { AttachmentModel, CommentModel } from '../models/comment.model';
 import { CommentEventsService } from './comment-events.service';
 
 // Live updates. The server tells every open page about new comments over a WebSocket (SignalR).
@@ -24,6 +24,11 @@ export class CommentsHubService {
     // The author of the comment gets it here too: that only makes the table load once more.
     this.connection.on('CommentCreated', (comment: CommentModel) => {
       this.events.notifyOtherComment(comment);
+    });
+
+    // An image is resized in the background; this comes when it is done (Ready) or not (Failed)
+    this.connection.on('AttachmentProcessed', (commentId: number, attachment: AttachmentModel) => {
+      this.events.notifyAttachmentProcessed(commentId, attachment);
     });
   }
 
