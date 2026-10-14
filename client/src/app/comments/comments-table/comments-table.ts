@@ -51,16 +51,17 @@ export class CommentsTable implements OnInit, OnDestroy {
 
     // A new top-level comment changes the list, so the page that is shown is loaded again.
     // A reply does not: the table has only top-level comments.
-    this.createdSubscription = this.events.created$.subscribe((comment) => {
+    this.createdSubscription = this.events.created$.subscribe(({ comment, own }) => {
       if (comment.parentId === null) {
         this.load();
-      } else {
+      } else if (own) {
+        // Only for the visitor's own reply: replies of other people must not open rows by themselves
         this.showRepliesOf(comment.parentId);
       }
     });
   }
 
-  // After someone answers a comment of this page, its replies open, so the answer is seen at once
+  // After the visitor answers a comment of this page, its replies open, so the answer is seen at once
   private showRepliesOf(commentId: number): void {
     const comments = this.page()?.items ?? [];
     const isOnThisPage = comments.some((comment) => comment.id === commentId);

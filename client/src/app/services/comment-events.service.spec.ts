@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { CommentModel } from '../models/comment.model';
-import { CommentEventsService } from './comment-events.service';
+import { CommentEventsService, CreatedComment } from './comment-events.service';
 
 describe('CommentEventsService', () => {
   const comment: CommentModel = {
@@ -17,22 +17,32 @@ describe('CommentEventsService', () => {
 
   it('gives a created comment to everyone who listens', () => {
     const events = TestBed.inject(CommentEventsService);
-    const first: CommentModel[] = [];
-    const second: CommentModel[] = [];
+    const first: CreatedComment[] = [];
+    const second: CreatedComment[] = [];
     events.created$.subscribe((created) => first.push(created));
     events.created$.subscribe((created) => second.push(created));
 
-    events.notifyCreated(comment);
+    events.notifyOwnComment(comment);
 
-    expect(first).toEqual([comment]);
-    expect(second).toEqual([comment]);
+    expect(first).toEqual([{ comment, own: true }]);
+    expect(second).toEqual([{ comment, own: true }]);
+  });
+
+  it('marks a comment written by someone else', () => {
+    const events = TestBed.inject(CommentEventsService);
+    const received: CreatedComment[] = [];
+    events.created$.subscribe((created) => received.push(created));
+
+    events.notifyOtherComment(comment);
+
+    expect(received).toEqual([{ comment, own: false }]);
   });
 
   it('does not repeat old comments to someone who starts listening later', () => {
     const events = TestBed.inject(CommentEventsService);
-    const received: CommentModel[] = [];
+    const received: CreatedComment[] = [];
 
-    events.notifyCreated(comment);
+    events.notifyOwnComment(comment);
     events.created$.subscribe((created) => received.push(created));
 
     expect(received).toEqual([]);

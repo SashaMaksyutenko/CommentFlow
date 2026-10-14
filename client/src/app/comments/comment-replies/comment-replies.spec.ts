@@ -89,7 +89,7 @@ describe('CommentReplies', () => {
   it('loads the replies again when a reply is created and keeps the old ones meanwhile', async () => {
     await apiReturns([reply({ id: 8, text: 'First' })]);
 
-    TestBed.inject(CommentEventsService).notifyCreated(reply({ id: 9, parentId: 8 }));
+    TestBed.inject(CommentEventsService).notifyOwnComment(reply({ id: 9, parentId: 8 }));
     fixture.detectChanges();
     expect(element.textContent).toContain('First');
     expect(element.textContent).not.toContain('Loading replies');
@@ -98,10 +98,19 @@ describe('CommentReplies', () => {
     expect(element.textContent).toContain('Second');
   });
 
+  it('loads the replies again for a reply of someone else too', async () => {
+    await apiReturns([reply({ id: 8, text: 'First' })]);
+
+    TestBed.inject(CommentEventsService).notifyOtherComment(reply({ id: 9, parentId: 8 }));
+
+    await apiReturns([reply({ id: 8, text: 'First', replies: [reply({ id: 9, parentId: 8, text: 'From Olena' })] })]);
+    expect(element.textContent).toContain('From Olena');
+  });
+
   it('does not load the replies again when a top-level comment is created', async () => {
     await apiReturns([]);
 
-    TestBed.inject(CommentEventsService).notifyCreated(reply({ id: 10, parentId: null }));
+    TestBed.inject(CommentEventsService).notifyOwnComment(reply({ id: 10, parentId: null }));
 
     http.expectNone('/api/comments/7/replies');
   });

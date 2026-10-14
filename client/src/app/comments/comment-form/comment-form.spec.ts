@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
-import { CommentEventsService } from '../../services/comment-events.service';
+import { CommentEventsService, CreatedComment } from '../../services/comment-events.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { CommentForm } from './comment-form';
 
@@ -291,21 +291,21 @@ describe('CommentForm', () => {
       expect(element.querySelectorAll('.error').length).toBe(0);
     });
 
-    it('tells the rest of the app about the created comment', async () => {
-      const heard: CommentModel[] = [];
-      TestBed.inject(CommentEventsService).created$.subscribe((comment) => heard.push(comment));
+    it('tells the rest of the app about the created comment as the visitor own one', async () => {
+      const heard: CreatedComment[] = [];
+      TestBed.inject(CommentEventsService).created$.subscribe((event) => heard.push(event));
       fillCorrectly();
       submit();
 
       postRequest().flush(created, { status: 201, statusText: 'Created' });
       await apiReturnsCaptcha('data:image/png;base64,BBBB');
 
-      expect(heard).toEqual([created]);
+      expect(heard).toEqual([{ comment: created, own: true }]);
     });
 
     it('tells nothing when the server refuses the comment', async () => {
-      const heard: CommentModel[] = [];
-      TestBed.inject(CommentEventsService).created$.subscribe((comment) => heard.push(comment));
+      const heard: CreatedComment[] = [];
+      TestBed.inject(CommentEventsService).created$.subscribe((event) => heard.push(event));
       fillCorrectly();
       submit();
 

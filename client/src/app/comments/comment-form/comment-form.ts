@@ -88,7 +88,7 @@ export class CommentForm {
         // The reply is sent, the next comment is an ordinary one again
         this.replyTarget.clear();
         // The rest of the page (the table) finds out about the new comment from here
-        this.events.notifyCreated(comment);
+        this.events.notifyOwnComment(comment);
       },
       error: (response: HttpErrorResponse) => {
         this.status.set('failed');

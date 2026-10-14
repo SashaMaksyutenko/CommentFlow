@@ -319,26 +319,44 @@ describe('CommentsTable', () => {
     button('Next').click();
     await apiReturns([comment({ id: 1 })], 2, 3);
 
-    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 7, parentId: null }));
+    TestBed.inject(CommentEventsService).notifyOwnComment(comment({ id: 7, parentId: null }));
 
     // Still the second page: the visitor stays where they were
     expect(lastRequest().request.params.get('page')).toBe('2');
   });
 
+  it('loads the page again for a top-level comment of someone else too', async () => {
+    await apiReturns([comment({ id: 1 })]);
+
+    TestBed.inject(CommentEventsService).notifyOtherComment(comment({ id: 7, parentId: null }));
+
+    expect(lastRequest().request.params.get('page')).toBe('1');
+  });
+
   it('does nothing when a reply to a comment from another page is created', async () => {
     await apiReturns([comment({ id: 1 })]);
 
-    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 7, parentId: 99 }));
+    TestBed.inject(CommentEventsService).notifyOwnComment(comment({ id: 7, parentId: 99 }));
     fixture.detectChanges();
 
     // No new page and no replies: afterEach checks that nothing was requested
     expect(element.querySelector('.replies-row')).toBeNull();
   });
 
-  it('opens the replies of a comment when a reply to it is created', async () => {
+  it('does not open the replies of a row when someone else answers it', async () => {
     await apiReturns([comment({ id: 1 }), comment({ id: 2 })]);
 
-    TestBed.inject(CommentEventsService).notifyCreated(comment({ id: 9, parentId: 2 }));
+    TestBed.inject(CommentEventsService).notifyOtherComment(comment({ id: 9, parentId: 2 }));
+    fixture.detectChanges();
+
+    expect(element.querySelector('.replies-row')).toBeNull();
+    expect(repliesButton(1).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('opens the replies of a comment when the visitor answers it', async () => {
+    await apiReturns([comment({ id: 1 }), comment({ id: 2 })]);
+
+    TestBed.inject(CommentEventsService).notifyOwnComment(comment({ id: 9, parentId: 2 }));
     fixture.detectChanges();
     http.expectOne('/api/comments/2/replies').flush([comment({ id: 9, parentId: 2, text: 'A new reply' })]);
     await fixture.whenStable();

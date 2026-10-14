@@ -30,9 +30,9 @@ export class CommentReplies implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.load();
 
-    // A new reply may belong to this thread, so the thread is loaded again.
-    // The replies that are already shown stay on the screen until the new ones arrive.
-    this.createdSubscription = this.events.created$.subscribe((comment) => {
+    // A new reply (the visitor's own or someone else's) may belong to this thread, so the thread
+    // is loaded again. The replies that are already shown stay on the screen until the new ones arrive.
+    this.createdSubscription = this.events.created$.subscribe(({ comment }) => {
       if (comment.parentId !== null) {
         this.load();
       }
