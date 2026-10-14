@@ -14,6 +14,9 @@
         </header>
         <!-- Same as in the table: the text has HTML tags and Angular cleans it before inserting -->
         <div class="text" [innerHTML]="reply.text"></div>
+        @if (reply.attachment) {
+          <app-attachment-view [attachment]="reply.attachment" />
+        }
       </article>
 
       <!-- The component uses itself here, that is how any depth of replies gets drawn -->

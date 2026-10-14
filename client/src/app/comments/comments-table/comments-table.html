@@ -34,7 +34,12 @@
               <td>{{ comment.createdAt | date: 'dd.MM.yy HH:mm' }}</td>
               <!-- The text has HTML tags (i, strong, code, a). Angular cleans it once more
                    before inserting: scripts and event handlers never get into the page. -->
-              <td class="text" [innerHTML]="comment.text"></td>
+              <td>
+                <div class="text" [innerHTML]="comment.text"></div>
+                @if (comment.attachment) {
+                  <app-attachment-view [attachment]="comment.attachment" />
+                }
+              </td>
               <td>
                 <button
                   type="button"

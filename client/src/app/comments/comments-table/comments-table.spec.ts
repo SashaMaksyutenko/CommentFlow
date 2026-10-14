@@ -129,10 +129,27 @@ describe('CommentsTable', () => {
 
     await apiReturns([comment({ text })]);
 
-    const cell = element.querySelector('td.text')!;
+    const cell = element.querySelector('.text')!;
     expect(cell.querySelector('i')?.textContent).toBe('all');
     expect(cell.querySelector('script')).toBeNull();
     expect(cell.querySelector('[onerror]')).toBeNull();
+  });
+
+  it('shows the file of a comment under its text', async () => {
+    const attachment: CommentModel['attachment'] = {
+      url: '/uploads/abc.png',
+      fileName: 'photo.png',
+      type: 'Image',
+      status: 'Ready',
+      contentType: 'image/png',
+      size: 41165,
+    };
+
+    await apiReturns([comment({ id: 1, attachment }), comment({ id: 2, attachment: null })]);
+
+    const rows = element.querySelectorAll('tbody tr');
+    expect(rows[0].querySelector('app-attachment-view img')?.getAttribute('src')).toBe('/uploads/abc.png');
+    expect(rows[1].querySelector('app-attachment-view')).toBeNull();
   });
 
   it('says so when there are no comments', async () => {

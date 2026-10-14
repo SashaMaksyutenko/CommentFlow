@@ -6,10 +6,11 @@ import { CommentSortField, CommentsQuery, PagedResponse, SortDirection } from '.
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
+import { AttachmentView } from '../attachment-view/attachment-view';
 import { CommentReplies } from '../comment-replies/comment-replies';
 
 @Component({
-  imports: [DatePipe, CommentReplies],
+  imports: [DatePipe, AttachmentView, CommentReplies],
   selector: 'app-comments-table',
   styleUrl: './comments-table.css',
   templateUrl: './comments-table.html',

@@ -1,0 +1,20 @@
+@let file = attachment();
+
+<!-- The file name comes from the visitor, so it is only ever put in as text with {{ }} -->
+@switch (file.status) {
+  @case ('Ready') {
+    @if (file.type === 'Image') {
+      <a class="image" [href]="file.url" target="_blank" rel="noopener">
+        <img [src]="file.url" [alt]="file.fileName" loading="lazy" />
+      </a>
+    } @else {
+      <a class="text-file" [href]="file.url" target="_blank" rel="noopener">{{ file.fileName }}</a>
+    }
+  }
+  @case ('Processing') {
+    <p class="note">The image {{ file.fileName }} is being processed…</p>
+  }
+  @case ('Failed') {
+    <p class="note failed">The image {{ file.fileName }} could not be processed.</p>
+  }
+}

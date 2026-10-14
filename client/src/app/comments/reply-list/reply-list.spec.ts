@@ -82,6 +82,23 @@ describe('ReplyList', () => {
     expect(TestBed.inject(ReplyTargetService).target()).toEqual(nested);
   });
 
+  it('shows the file of a reply under its text', async () => {
+    const attachment: CommentModel['attachment'] = {
+      url: '/uploads/def.txt',
+      fileName: 'notes.txt',
+      type: 'Text',
+      status: 'Ready',
+      contentType: 'text/plain',
+      size: 37,
+    };
+
+    await show([reply({ id: 2, attachment }), reply({ id: 3, attachment: null })]);
+
+    const replies = element.querySelectorAll('.reply');
+    expect(replies[0].querySelector('app-attachment-view a')?.textContent).toBe('notes.txt');
+    expect(replies[1].querySelector('app-attachment-view')).toBeNull();
+  });
+
   it('makes the user name a link only when there is a home page', async () => {
     await show([reply({ id: 2, homePage: 'https://example.com/' }), reply({ id: 3, homePage: null })]);
 
