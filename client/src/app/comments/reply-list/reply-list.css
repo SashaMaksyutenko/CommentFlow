@@ -1,28 +1,70 @@
-/* Every level of replies is shifted to the right and gets a line on the left */
 .replies {
   margin: 0;
-  padding-left: 1rem;
+  padding: 0;
   list-style: none;
-  border-left: 2px solid #ddd;
 }
 
+/* Every deeper level of replies is one step to the right, like in the assignment picture.
+   The first level gets its step from the table row it is in. */
+app-reply-list {
+  display: block;
+  margin-left: 2rem;
+}
+
+/* A reply is a card like a top-level comment: the grey header line and the text under it */
 .reply {
-  padding: 0.5rem 0;
+  margin-bottom: 0.75rem;
 }
 
 header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--color-surface);
 }
 
 .name {
-  font-weight: bold;
+  font-weight: 700;
 }
 
+/* A name with a home page is a link: it keeps the link colour, the line shows only on hover */
+a.name {
+  text-decoration: none;
+}
+
+a.name:hover {
+  text-decoration: underline;
+}
+
+.email,
+.date {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+/* The Reply button goes to the right end of the header line */
+.reply-button {
+  margin-left: auto;
+}
+
+/* Keep the line breaks the user typed, and don't let a very long word stretch the card */
 .text {
+  padding: 0.5rem 0.75rem 0;
   white-space: pre-line;
   overflow-wrap: anywhere;
+}
+
+/* The file under the text starts at the same left edge as the text */
+app-attachment-view {
+  padding-left: 0.75rem;
+}
+
+/* On a phone the steps are smaller, otherwise deep replies would become too narrow */
+@media (max-width: 600px) {
+  app-reply-list {
+    margin-left: 0.75rem;
+  }
 }
