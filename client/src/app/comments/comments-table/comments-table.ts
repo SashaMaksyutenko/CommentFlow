@@ -9,9 +9,10 @@ import { ReplyTargetService } from '../../services/reply-target.service';
 import { AttachmentView } from '../attachment-view/attachment-view';
 import { CommentReplies } from '../comment-replies/comment-replies';
 import { replaceAttachment } from '../replace-attachment';
+import { UserAvatar } from '../user-avatar/user-avatar';
 
 @Component({
-  imports: [DatePipe, AttachmentView, CommentReplies],
+  imports: [DatePipe, AttachmentView, CommentReplies, UserAvatar],
   selector: 'app-comments-table',
   styleUrl: './comments-table.css',
   templateUrl: './comments-table.html',

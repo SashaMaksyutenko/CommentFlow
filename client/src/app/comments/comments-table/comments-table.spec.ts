@@ -90,6 +90,14 @@ describe('CommentsTable', () => {
     expect(element.textContent).not.toContain('Loading comments');
   });
 
+  it('puts an avatar with the first letter in front of the user name', async () => {
+    await apiReturns([comment({ id: 1, userName: 'olena2' })]);
+
+    const author = element.querySelector('tbody tr .author')!;
+    expect(author.querySelector('app-user-avatar')?.textContent?.trim()).toBe('O');
+    expect(author.textContent).toContain('olena2');
+  });
+
   it('shows a row for every comment', async () => {
     await apiReturns([
       comment({ id: 1, userName: 'Sasha1', email: 'sasha@example.com' }),

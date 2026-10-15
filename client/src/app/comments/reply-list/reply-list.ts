@@ -3,11 +3,12 @@ import { Component, inject, input } from '@angular/core';
 import { CommentModel } from '../../models/comment.model';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { AttachmentView } from '../attachment-view/attachment-view';
+import { UserAvatar } from '../user-avatar/user-avatar';
 
 // Shows replies as a tree. Every reply can have its own replies,
 // and they are drawn by the same component, one level deeper.
 @Component({
-  imports: [DatePipe, AttachmentView],
+  imports: [DatePipe, AttachmentView, UserAvatar],
   selector: 'app-reply-list',
   styleUrl: './reply-list.css',
   templateUrl: './reply-list.html',

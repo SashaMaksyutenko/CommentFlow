@@ -57,6 +57,13 @@ describe('ReplyList', () => {
     expect(replies[1].textContent).toContain('Ivan3');
   });
 
+  it('puts an avatar with the first letter in the header of every reply', async () => {
+    await show([reply({ id: 2, userName: 'Olena2' }), reply({ id: 3, userName: 'ivan3' })]);
+
+    const avatars = element.querySelectorAll('.reply header app-user-avatar');
+    expect(Array.from(avatars).map((avatar) => avatar.textContent?.trim())).toEqual(['O', 'I']);
+  });
+
   it('puts the replies of a reply inside it, at any depth', async () => {
     const third = reply({ id: 4, parentId: 3, text: 'Third level' });
     const second = reply({ id: 3, parentId: 2, text: 'Second level', replies: [third] });

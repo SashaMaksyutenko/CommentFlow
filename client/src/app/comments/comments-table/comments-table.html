@@ -24,11 +24,14 @@
           @for (comment of currentPage.items; track comment.id) {
             <tr>
               <td>
-                @if (comment.homePage) {
-                  <a [href]="comment.homePage" target="_blank" rel="noopener noreferrer nofollow">{{ comment.userName }}</a>
-                } @else {
-                  {{ comment.userName }}
-                }
+                <span class="author">
+                  <app-user-avatar [name]="comment.userName" />
+                  @if (comment.homePage) {
+                    <a [href]="comment.homePage" target="_blank" rel="noopener noreferrer nofollow">{{ comment.userName }}</a>
+                  } @else {
+                    {{ comment.userName }}
+                  }
+                </span>
               </td>
               <td>{{ comment.email }}</td>
               <td>{{ comment.createdAt | date: 'dd.MM.yy HH:mm' }}</td>

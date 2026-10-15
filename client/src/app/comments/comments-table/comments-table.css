@@ -35,6 +35,13 @@ table.loading {
   cursor: pointer;
 }
 
+/* The avatar and the name on one line */
+.author {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .reply-button {
   margin-left: 0.5rem;
 }

@@ -3,6 +3,7 @@
     <li>
       <article class="reply">
         <header>
+          <app-user-avatar [name]="reply.userName" />
           @if (reply.homePage) {
             <a class="name" [href]="reply.homePage" target="_blank" rel="noopener noreferrer nofollow">{{ reply.userName }}</a>
           } @else {
