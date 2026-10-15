@@ -1,7 +1,7 @@
 label {
   display: block;
   margin-bottom: 0.25rem;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .picture {
@@ -12,21 +12,18 @@ label {
 }
 
 img {
-  border: 1px solid #999;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
 }
 
 input {
-  box-sizing: border-box;
   width: 12rem;
-  padding: 0.4rem;
-  border: 1px solid #999;
-  font: inherit;
 }
 
 input.ng-invalid.ng-touched {
-  border-color: #b00020;
+  border-color: var(--color-error);
 }
 
 .error {
-  color: #b00020;
+  color: var(--color-error);
 }

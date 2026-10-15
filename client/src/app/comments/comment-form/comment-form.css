@@ -1,10 +1,19 @@
+/* The form is a card with a light frame, like the comments below it */
 .comment-form {
   max-width: 40rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
 }
 
 .field {
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 /* The line that says whose comment is being answered */
@@ -12,39 +21,37 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem;
-  background: #f2f4f8;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-surface);
 }
 
 label {
   display: block;
   margin-bottom: 0.25rem;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 input,
 textarea {
-  box-sizing: border-box;
   width: 100%;
-  padding: 0.4rem;
-  border: 1px solid #999;
-  font: inherit;
 }
 
 /* Angular puts these classes on the field itself: wrong value, and the visitor has already left it */
 input.ng-invalid.ng-touched,
 textarea.ng-invalid.ng-touched {
-  border-color: #b00020;
+  border-color: var(--color-error);
 }
 
 .error {
   margin: 0.25rem 0 0;
-  color: #b00020;
-  font-size: 0.9rem;
+  color: var(--color-error);
+  font-size: 0.875rem;
 }
 
 .success {
-  color: #1b6e2c;
+  color: var(--color-success);
 }
 
 /* The line about how the sending went, right above the button */

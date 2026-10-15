@@ -5,14 +5,17 @@
 
 .preview {
   margin-top: 0.5rem;
-  padding: 0.5rem;
-  border: 1px dashed #999;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
 }
 
 h3 {
   margin: 0 0 0.25rem;
-  font-size: 0.85rem;
-  color: #555;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 /* The same as in the table: keep the line breaks, don't let a long word stretch the block */
@@ -23,6 +26,6 @@ h3 {
 
 .error {
   margin: 0.25rem 0 0;
-  color: #b00020;
-  font-size: 0.9rem;
+  color: var(--color-error);
+  font-size: 0.875rem;
 }

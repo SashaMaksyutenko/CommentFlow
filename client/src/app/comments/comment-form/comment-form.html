@@ -64,7 +64,7 @@
   }
 
   <!-- Turned off while the request is running, so the comment is not sent twice -->
-  <button type="submit" [disabled]="status() === 'sending'">
+  <button type="submit" class="primary" [disabled]="status() === 'sending'">
     {{ status() === 'sending' ? 'Sending…' : 'Add comment' }}
   </button>
 </form>

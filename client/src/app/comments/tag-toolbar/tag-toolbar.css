@@ -1,9 +1,12 @@
 .toolbar {
   display: flex;
   gap: 0.25rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
+/* Small buttons that look like the tags they put in */
 button {
-  font-family: monospace;
+  padding: 0.1rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
 }
