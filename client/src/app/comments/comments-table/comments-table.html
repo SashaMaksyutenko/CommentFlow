@@ -5,67 +5,74 @@
     @if (currentPage.items.length === 0) {
       <p class="message">No comments yet.</p>
     } @else {
-      <!-- While another page or order is loading, the old rows stay visible but faded -->
-      <table [class.loading]="loading()" [attr.aria-busy]="loading()">
-        <thead>
-          <tr>
-            @for (column of sortableColumns; track column.field) {
-              <th scope="col" [attr.aria-sort]="ariaSort(column.field)">
-                <button type="button" class="sort" (click)="sortBy(column.field)">
-                  {{ column.label }} {{ sortArrow(column.field) }}
-                </button>
-              </th>
-            }
-            <th scope="col">Comment</th>
-            <th scope="col">Replies</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (comment of currentPage.items; track comment.id) {
+      <!-- On a narrow screen the table moves sideways inside this box, the page itself does not -->
+      <div class="table-scroll">
+        <!-- While another page or order is loading, the old rows stay visible but faded -->
+        <table [class.loading]="loading()" [attr.aria-busy]="loading()">
+          <thead>
             <tr>
-              <td>
-                <span class="author">
-                  <app-user-avatar [name]="comment.userName" />
-                  @if (comment.homePage) {
-                    <a [href]="comment.homePage" target="_blank" rel="noopener noreferrer nofollow">{{ comment.userName }}</a>
-                  } @else {
-                    {{ comment.userName }}
-                  }
-                </span>
-              </td>
-              <td>{{ comment.email }}</td>
-              <td>{{ comment.createdAt | date: 'dd.MM.yy HH:mm' }}</td>
-              <!-- The text has HTML tags (i, strong, code, a). Angular cleans it once more
-                   before inserting: scripts and event handlers never get into the page. -->
-              <td>
-                <div class="text" [innerHTML]="comment.text"></div>
-                @if (comment.attachment) {
-                  <app-attachment-view [attachment]="comment.attachment" />
-                }
-              </td>
-              <td>
-                <button
-                  type="button"
-                  class="replies-toggle"
-                  [attr.aria-expanded]="repliesOpen(comment.id)"
-                  (click)="toggleReplies(comment.id)"
-                >
-                  {{ repliesOpen(comment.id) ? 'Hide replies' : 'Show replies' }}
-                </button>
-                <button type="button" class="reply-button" (click)="replyTarget.replyTo(comment)">Reply</button>
-              </td>
+              @for (column of sortableColumns; track column.field) {
+                <th scope="col" [attr.aria-sort]="ariaSort(column.field)">
+                  <button type="button" class="sort" (click)="sortBy(column.field)">
+                    {{ column.label }} {{ sortArrow(column.field) }}
+                  </button>
+                </th>
+              }
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr>
-            <!-- The replies are loaded only when the visitor opens them -->
-            @if (repliesOpen(comment.id)) {
-              <tr class="replies-row">
-                <td colspan="5">
-                  <app-comment-replies [commentId]="comment.id" />
+          </thead>
+
+          <!-- Every comment is a card, like in the assignment picture: a grey header line
+               and the text under it. A table may have many <tbody>, one card is one <tbody>. -->
+          @for (comment of currentPage.items; track comment.id) {
+            <tbody class="card">
+              <tr class="card-head">
+                <td>
+                  <span class="author">
+                    <app-user-avatar [name]="comment.userName" />
+                    @if (comment.homePage) {
+                      <a class="name" [href]="comment.homePage" target="_blank" rel="noopener noreferrer nofollow">{{ comment.userName }}</a>
+                    } @else {
+                      <span class="name">{{ comment.userName }}</span>
+                    }
+                  </span>
+                </td>
+                <td class="muted">{{ comment.email }}</td>
+                <td class="muted">{{ comment.createdAt | date: 'dd.MM.yy HH:mm' }}</td>
+                <td class="actions">
+                  <button
+                    type="button"
+                    class="replies-toggle"
+                    [attr.aria-expanded]="repliesOpen(comment.id)"
+                    (click)="toggleReplies(comment.id)"
+                  >
+                    {{ repliesOpen(comment.id) ? 'Hide replies' : 'Show replies' }}
+                  </button>
+                  <button type="button" class="reply-button" (click)="replyTarget.replyTo(comment)">Reply</button>
                 </td>
               </tr>
-            }
+              <tr class="card-body">
+                <!-- The text has HTML tags (i, strong, code, a). Angular cleans it once more
+                     before inserting: scripts and event handlers never get into the page. -->
+                <td colspan="4">
+                  <div class="text" [innerHTML]="comment.text"></div>
+                  @if (comment.attachment) {
+                    <app-attachment-view [attachment]="comment.attachment" />
+                  }
+                </td>
+              </tr>
+              <!-- The replies are loaded only when the visitor opens them -->
+              @if (repliesOpen(comment.id)) {
+                <tr class="replies-row">
+                  <td colspan="4">
+                    <app-comment-replies [commentId]="comment.id" />
+                  </td>
+                </tr>
+              }
+            </tbody>
           }
-        </tbody>
-      </table>
+        </table>
+      </div>
 
       @if (currentPage.totalPages > 1) {
         <nav class="pagination" aria-label="Pages">

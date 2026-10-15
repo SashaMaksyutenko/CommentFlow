@@ -1,28 +1,27 @@
+/* On a narrow screen the table can be moved sideways inside this box, the page itself does not move */
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* "separate" and not "collapse": only then the grey header lines can have rounded corners.
+   The spacing puts a gap between all rows: under the column names, between a header line and its text. */
 table {
   width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  padding: 0.5rem;
-  text-align: left;
-  vertical-align: top;
-  border-bottom: 1px solid #ddd;
-}
-
-/* Keep the line breaks the user typed, and don't let a very long word stretch the table */
-.text {
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-
-.error {
-  color: #b00020;
+  border-collapse: separate;
+  border-spacing: 0 0.5rem;
 }
 
 table.loading {
   opacity: 0.6;
+}
+
+th {
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  text-align: left;
+  white-space: nowrap;
 }
 
 /* A header button that looks like a normal header */
@@ -30,9 +29,35 @@ table.loading {
   padding: 0;
   border: none;
   background: none;
+  color: inherit;
   font: inherit;
-  font-weight: bold;
+  font-weight: 600;
   cursor: pointer;
+}
+
+/* For screen readers only: the column of buttons needs a name, but the page does not need to show it */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The grey header line of a comment card, like in the assignment picture */
+.card-head td {
+  padding: 0.6rem 0.75rem;
+  background: var(--color-surface);
+  vertical-align: middle;
+}
+
+.card-head td:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.card-head td:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 /* The avatar and the name on one line */
@@ -42,14 +67,51 @@ table.loading {
   gap: 0.5rem;
 }
 
+.name {
+  font-weight: 700;
+}
+
+/* A name with a home page is a link: it keeps the link colour, the line shows only on hover */
+a.name {
+  text-decoration: none;
+}
+
+a.name:hover {
+  text-decoration: underline;
+}
+
+.muted {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
 .reply-button {
   margin-left: 0.5rem;
 }
 
-/* The row with replies is shifted a bit so it reads as a part of the comment above */
+/* The text of the card, with space under it before the next card */
+.card-body td {
+  padding: 0 0.75rem 1.25rem;
+}
+
+/* Keep the line breaks the user typed, and don't let a very long word stretch the table */
+.text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* The replies are under the text of their comment, shifted a bit to the right */
 .replies-row td {
-  padding-left: 1.5rem;
-  background: #fafafa;
+  padding: 0 0 1.25rem 1.5rem;
+}
+
+.error {
+  color: var(--color-error);
 }
 
 .pagination {

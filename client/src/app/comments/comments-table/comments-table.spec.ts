@@ -59,6 +59,11 @@ describe('CommentsTable', () => {
     fixture.detectChanges(); // the replies component appears (or goes away) right now
   }
 
+  // Every comment is one card: its own <tbody> with a header line, the text and maybe the replies
+  function cards(): NodeListOf<HTMLElement> {
+    return element.querySelectorAll<HTMLElement>('tbody.card');
+  }
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CommentsTable],
@@ -93,29 +98,42 @@ describe('CommentsTable', () => {
   it('puts an avatar with the first letter in front of the user name', async () => {
     await apiReturns([comment({ id: 1, userName: 'olena2' })]);
 
-    const author = element.querySelector('tbody tr .author')!;
+    const author = element.querySelector('.card-head .author')!;
     expect(author.querySelector('app-user-avatar')?.textContent?.trim()).toBe('O');
     expect(author.textContent).toContain('olena2');
   });
 
-  it('shows a row for every comment', async () => {
+  it('shows a card for every comment: the header line and the text under it', async () => {
     await apiReturns([
-      comment({ id: 1, userName: 'Sasha1', email: 'sasha@example.com' }),
-      comment({ id: 2, userName: 'Olena2', email: 'olena@example.com' }),
+      comment({ id: 1, userName: 'Sasha1', email: 'sasha@example.com', text: 'First' }),
+      comment({ id: 2, userName: 'Olena2', email: 'olena@example.com', text: 'Second' }),
     ]);
 
-    const rows = element.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(2);
-    expect(rows[0].textContent).toContain('Sasha1');
-    expect(rows[0].textContent).toContain('sasha@example.com');
-    expect(rows[1].textContent).toContain('Olena2');
+    expect(cards().length).toBe(2);
+    const head = cards()[0].querySelector('.card-head')!;
+    expect(head.textContent).toContain('Sasha1');
+    expect(head.textContent).toContain('sasha@example.com');
+    expect(head.querySelector('.reply-button')).not.toBeNull();
+    // The text is in its own row, across the whole width of the table
+    const body = cards()[0].querySelector('.card-body td')!;
+    expect(body.getAttribute('colspan')).toBe('4');
+    expect(body.querySelector('.text')?.textContent).toBe('First');
+    expect(cards()[1].textContent).toContain('Olena2');
+  });
+
+  it('keeps the sortable column names and a hidden name for the column of buttons', async () => {
+    await apiReturns([comment()]);
+
+    const headers = Array.from(element.querySelectorAll('thead th')).map((th) => th.textContent?.trim());
+    expect(headers).toEqual(['User Name', 'E-mail', 'Date ▼', 'Actions']);
+    expect(element.querySelector('thead .visually-hidden')?.textContent).toBe('Actions');
   });
 
   it('shows the date in the visitor time zone as dd.MM.yy HH:mm', async () => {
     await apiReturns([comment({ createdAt: '2026-10-01T10:27:00Z' })]);
 
     const expected = formatDate('2026-10-01T10:27:00Z', 'dd.MM.yy HH:mm', 'en-US');
-    expect(element.querySelector('tbody tr')?.textContent).toContain(expected);
+    expect(element.querySelector('.card-head')?.textContent).toContain(expected);
   });
 
   it('makes the user name a link only when there is a home page', async () => {
@@ -124,11 +142,11 @@ describe('CommentsTable', () => {
       comment({ id: 2, homePage: null }),
     ]);
 
-    const rows = element.querySelectorAll('tbody tr');
-    const link = rows[0].querySelector('td a');
+    const link = cards()[0].querySelector('a.name');
     expect(link?.getAttribute('href')).toBe('https://example.com/');
     expect(link?.getAttribute('rel')).toContain('noopener');
-    expect(rows[1].querySelector('td a')).toBeNull();
+    expect(cards()[1].querySelector('a')).toBeNull();
+    expect(cards()[1].querySelector('span.name')?.textContent).toBe('Sasha1');
   });
 
   it('shows the allowed tags of the text and never lets scripts in', async () => {
@@ -155,9 +173,8 @@ describe('CommentsTable', () => {
 
     await apiReturns([comment({ id: 1, attachment }), comment({ id: 2, attachment: null })]);
 
-    const rows = element.querySelectorAll('tbody tr');
-    expect(rows[0].querySelector('app-attachment-view img')?.getAttribute('src')).toBe('/uploads/abc.png');
-    expect(rows[1].querySelector('app-attachment-view')).toBeNull();
+    expect(cards()[0].querySelector('.card-body app-attachment-view img')?.getAttribute('src')).toBe('/uploads/abc.png');
+    expect(cards()[1].querySelector('app-attachment-view')).toBeNull();
   });
 
   it('says so when there are no comments', async () => {
@@ -268,7 +285,7 @@ describe('CommentsTable', () => {
     button('Next').click();
     fixture.detectChanges();
 
-    expect(element.querySelectorAll('tbody tr').length).toBe(1);
+    expect(cards().length).toBe(1);
     expect(element.querySelector('table')?.getAttribute('aria-busy')).toBe('true');
     await apiReturns([comment()], 2, 2);
     expect(element.querySelector('table')?.getAttribute('aria-busy')).toBe('false');
@@ -300,11 +317,12 @@ describe('CommentsTable', () => {
     http.expectOne('/api/comments/2/replies').flush([comment({ id: 9, parentId: 2, text: 'A reply' })]);
     await fixture.whenStable();
 
-    // 3 comments and one more row with the replies, after the second comment
-    const rows = element.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(4);
-    expect(rows[2].classList.contains('replies-row')).toBe(true);
-    expect(rows[2].textContent).toContain('A reply');
+    // The replies are the last row of the second card, under its text; the other cards have none
+    const secondCardRows = cards()[1].querySelectorAll('tr');
+    expect(secondCardRows.length).toBe(3);
+    expect(secondCardRows[2].classList.contains('replies-row')).toBe(true);
+    expect(secondCardRows[2].textContent).toContain('A reply');
+    expect(element.querySelectorAll('.replies-row').length).toBe(1);
     expect(repliesButton(1).textContent).toContain('Hide replies');
     expect(repliesButton(1).getAttribute('aria-expanded')).toBe('true');
   });
@@ -357,8 +375,7 @@ describe('CommentsTable', () => {
     await fixture.whenStable();
 
     // No request: afterEach checks that nothing else was sent
-    const rows = element.querySelectorAll('tbody tr');
-    expect(rows[1].querySelector('app-attachment-view img')?.getAttribute('src')).toBe('/uploads/abc.png');
+    expect(cards()[1].querySelector('app-attachment-view img')?.getAttribute('src')).toBe('/uploads/abc.png');
     expect(element.textContent).not.toContain('is being processed');
   });
 
