@@ -22,12 +22,16 @@
 @if (isOpen()) {
   <!-- Escape or a click on the dark area closes the lightbox, a click on the file itself does not.
        tabindex="-1": a click on the picture keeps the focus here and not on the page behind,
-       otherwise Escape would stop working after that click. -->
+       otherwise Escape would stop working after that click.
+       animate.enter / animate.leave: Angular adds the class when the layer appears, and when it closes
+       it first plays the closing animation and only then removes the layer from the page. -->
   <div
     class="lightbox"
     role="dialog"
     aria-modal="true"
     tabindex="-1"
+    animate.enter="lightbox-enter"
+    animate.leave="lightbox-leave"
     [attr.aria-label]="file.fileName"
     (click)="close()"
     (keydown.escape)="close()"
@@ -36,7 +40,18 @@
       <button #closeButton type="button" class="close" aria-label="Close" (click)="close()">×</button>
 
       @if (file.type === 'Image') {
-        <img [src]="file.url" [alt]="file.fileName" />
+        @if (!imageLoaded()) {
+          <p class="note">Loading…</p>
+        }
+        <!-- Shown in its real size (the server keeps it within 320x240), so it stays sharp.
+             A broken picture also counts as "arrived": the browser then shows its name instead. -->
+        <img
+          [src]="file.url"
+          [alt]="file.fileName"
+          [class.loaded]="imageLoaded()"
+          (load)="imageLoaded.set(true)"
+          (error)="imageLoaded.set(true)"
+        />
       } @else if (textFailed()) {
         <p class="note failed">Could not load the file.</p>
       } @else if (text() !== null) {

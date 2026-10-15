@@ -89,3 +89,73 @@ pre {
   color: #555;
   font-size: 0.85rem;
 }
+
+/* Visual effects, like lightbox2 from the assignment. Opening: the dark layer fades in, the frame
+   grows from half its size, and then the picture fades in. Closing: the same backwards, a bit faster.
+   The leaving animation is not longer than the layer's own one: Angular waits only for the layer. */
+.lightbox-enter {
+  animation: lightbox-fade-in 400ms ease-out;
+}
+
+/* Starts fast and slows down at the end, so the growing is easy to see */
+.lightbox-enter .content {
+  animation: lightbox-grow-in 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lightbox-leave {
+  animation: lightbox-fade-out 300ms ease-in forwards;
+}
+
+.lightbox-leave .content {
+  animation: lightbox-shrink-out 300ms ease-in forwards;
+}
+
+@keyframes lightbox-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes lightbox-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lightbox-grow-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes lightbox-shrink-out {
+  to {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+
+/* The picture waits a little until the frame has mostly grown, and only then fades in */
+.content img {
+  opacity: 0;
+  transition: opacity 500ms ease-in 250ms;
+}
+
+.content img.loaded {
+  opacity: 1;
+}
+
+/* Some people turn animations off in their system settings: then the lightbox just appears and goes */
+@media (prefers-reduced-motion: reduce) {
+  .lightbox-enter,
+  .lightbox-enter .content,
+  .lightbox-leave,
+  .lightbox-leave .content {
+    animation: none;
+  }
+
+  .content img {
+    transition: none;
+  }
+}

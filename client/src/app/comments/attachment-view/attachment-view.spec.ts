@@ -100,6 +100,43 @@ describe('AttachmentView', () => {
     expect(document.activeElement).toBe(element.querySelector('.close'));
   });
 
+  it('shows "Loading…" until the big picture has arrived and then lets it fade in', async () => {
+    await show(attachment());
+    await openLightbox();
+
+    const picture = lightbox()!.querySelector('.content img')!;
+    expect(picture.classList.contains('loaded')).toBe(false);
+    expect(lightbox()?.textContent).toContain('Loading…');
+
+    picture.dispatchEvent(new Event('load'));
+    await fixture.whenStable();
+
+    expect(picture.classList.contains('loaded')).toBe(true);
+    expect(lightbox()?.textContent).not.toContain('Loading…');
+  });
+
+  it('stops waiting when the big picture could not be loaded', async () => {
+    await show(attachment());
+    await openLightbox();
+
+    lightbox()!.querySelector('.content img')!.dispatchEvent(new Event('error'));
+    await fixture.whenStable();
+
+    expect(lightbox()?.textContent).not.toContain('Loading…');
+  });
+
+  it('lets the picture fade in again when the lightbox is opened once more', async () => {
+    await show(attachment());
+    await openLightbox();
+    lightbox()!.querySelector('.content img')!.dispatchEvent(new Event('load'));
+    element.querySelector<HTMLButtonElement>('.close')!.click();
+    await fixture.whenStable();
+
+    await openLightbox();
+
+    expect(lightbox()!.querySelector('.content img')!.classList.contains('loaded')).toBe(false);
+  });
+
   it('closes with the close button, with Escape and with a click on the dark area', async () => {
     await show(attachment());
 

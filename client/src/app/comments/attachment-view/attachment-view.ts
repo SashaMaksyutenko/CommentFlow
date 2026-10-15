@@ -19,6 +19,9 @@ export class AttachmentView implements OnDestroy {
 
   protected readonly isOpen = signal(false);
 
+  // The big picture fades in only when it has arrived, so it is never seen half drawn
+  protected readonly imageLoaded = signal(false);
+
   // The content of a TXT file, loaded the first time the lightbox is opened
   protected readonly text = signal<string | null>(null);
   protected readonly textFailed = signal(false);
@@ -39,6 +42,8 @@ export class AttachmentView implements OnDestroy {
   }
 
   protected open(): void {
+    // The picture element is created again with every opening, so it fades in again too
+    this.imageLoaded.set(false);
     this.isOpen.set(true);
 
     if (this.attachment().type === 'Text' && this.text() === null) {
