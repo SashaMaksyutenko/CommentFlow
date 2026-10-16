@@ -117,10 +117,11 @@ export class CommentsTable implements OnInit, OnDestroy {
     return query.sortDirection === 'asc' ? 'ascending' : 'descending';
   }
 
+  // ↕ says "this column can be sorted", ▲/▼ show the order of the column the table is sorted by
   protected sortArrow(field: CommentSortField): string {
     const query = this.query();
     if (query.sortBy !== field) {
-      return '';
+      return '↕';
     }
 
     return query.sortDirection === 'asc' ? '▲' : '▼';

@@ -125,9 +125,21 @@ describe('CommentsTable', () => {
   it('keeps the sortable column names and a hidden name for the column of buttons', async () => {
     await apiReturns([comment()]);
 
-    const headers = Array.from(element.querySelectorAll('thead th')).map((th) => th.textContent?.trim());
-    expect(headers).toEqual(['User Name', 'E-mail', 'Date ▼', 'Actions']);
+    const headers = Array.from(element.querySelectorAll('thead th')).map((th) =>
+      th.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(headers).toEqual(['User Name ↕', 'E-mail ↕', 'Date ▼', 'Actions']);
     expect(element.querySelector('thead .visually-hidden')?.textContent).toBe('Actions');
+  });
+
+  it('tells that a column can be sorted, and hides the arrows from screen readers', async () => {
+    await apiReturns([comment()]);
+
+    const sortButtons = Array.from(element.querySelectorAll<HTMLButtonElement>('thead .sort'));
+    expect(sortButtons.map((item) => item.title)).toEqual(['Sort by User Name', 'Sort by E-mail', 'Sort by Date']);
+    for (const item of sortButtons) {
+      expect(item.querySelector('.sort-arrow')?.getAttribute('aria-hidden')).toBe('true');
+    }
   });
 
   it('shows the date in the visitor time zone as dd.MM.yy HH:mm', async () => {
@@ -234,6 +246,8 @@ describe('CommentsTable', () => {
     expect(header('User Name').getAttribute('aria-sort')).toBe('ascending');
     expect(header('User Name').textContent).toContain('▲');
     expect(header('Date').hasAttribute('aria-sort')).toBe(false);
+    // The column that was sorted before shows again that it can be sorted
+    expect(header('Date').textContent).toContain('↕');
   });
 
   it('asks for the next and the previous page and keeps the order', async () => {

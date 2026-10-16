@@ -13,8 +13,10 @@
             <tr>
               @for (column of sortableColumns; track column.field) {
                 <th scope="col" [attr.aria-sort]="ariaSort(column.field)">
-                  <button type="button" class="sort" (click)="sortBy(column.field)">
-                    {{ column.label }} {{ sortArrow(column.field) }}
+                  <!-- The arrow is only for the eyes: a screen reader gets the order from aria-sort -->
+                  <button type="button" class="sort" title="Sort by {{ column.label }}" (click)="sortBy(column.field)">
+                    {{ column.label }}
+                    <span class="sort-arrow" aria-hidden="true">{{ sortArrow(column.field) }}</span>
                   </button>
                 </th>
               }
