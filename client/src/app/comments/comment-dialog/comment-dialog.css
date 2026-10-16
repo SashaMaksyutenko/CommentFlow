@@ -1,0 +1,100 @@
+/* The dark layer over the page, the window is in the middle */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(20, 28, 48, 0.55);
+}
+
+/* A long form scrolls inside the window, and the page under it stays where it is */
+.window {
+  position: relative;
+  width: min(42rem, 100%);
+  max-height: 100%;
+  padding: 1.5rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* It gets the focus only to catch Escape, a frame around the whole window is not needed */
+.window:focus {
+  outline: none;
+}
+
+.close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  padding: 0.25rem;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--color-text);
+}
+
+/* Opening: the dark layer fades in and the window comes up a little. Closing: backwards.
+   The window is not slower than the layer: Angular waits only for the layer before removing it. */
+.dialog-enter {
+  animation: dialog-fade-in 250ms ease-out;
+}
+
+.dialog-enter .window {
+  animation: dialog-come-up 250ms ease-out;
+}
+
+.dialog-leave {
+  animation: dialog-fade-out 200ms ease-in forwards;
+}
+
+.dialog-leave .window {
+  animation: dialog-go-down 200ms ease-in forwards;
+}
+
+@keyframes dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-come-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+}
+
+@keyframes dialog-go-down {
+  to {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+}
+
+/* Some people turn animations off in their system settings: then the window just appears and goes */
+@media (prefers-reduced-motion: reduce) {
+  .dialog-enter,
+  .dialog-enter .window,
+  .dialog-leave,
+  .dialog-leave .window {
+    animation: none;
+  }
+}

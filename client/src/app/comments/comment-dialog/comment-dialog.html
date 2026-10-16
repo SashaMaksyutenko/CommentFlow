@@ -1,0 +1,24 @@
+@if (dialog.isOpen()) {
+  <!-- Escape or a click on the dark area closes the window, a click inside it does not.
+       The form is created when the window opens, so every opening gets a fresh CAPTCHA picture. -->
+  <div
+    class="overlay"
+    animate.enter="dialog-enter"
+    animate.leave="dialog-leave"
+    (click)="dialog.close()"
+    (keydown.escape)="dialog.close()"
+  >
+    <div
+      #panel
+      class="window"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Comment form"
+      tabindex="-1"
+      (click)="$event.stopPropagation()"
+    >
+      <button type="button" class="close" aria-label="Close" (click)="dialog.close()">×</button>
+      <app-comment-form />
+    </div>
+  </div>
+}

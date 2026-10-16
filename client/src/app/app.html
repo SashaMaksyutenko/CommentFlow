@@ -1,7 +1,11 @@
 <main>
-  <h1>{{ title() }}</h1>
-
-  <app-comment-form />
+  <!-- The form is not on the page any more: it opens in a window, so the comments are seen at once -->
+  <header class="page-head">
+    <h1>{{ title() }}</h1>
+    <button type="button" class="primary" (click)="dialog.openNew()">Add a comment</button>
+  </header>
 
   <app-comments-table />
+
+  <app-comment-dialog />
 </main>
