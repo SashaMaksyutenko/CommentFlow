@@ -1,0 +1,7 @@
+<!-- The box with role="status" is always on the page and only the text inside it changes:
+     a screen reader reads out a new text in such a box, but often misses a box that appears with its text -->
+<div class="notice-area" role="status">
+  @if (message(); as text) {
+    <p class="notice" animate.enter="notice-enter" animate.leave="notice-leave">{{ text }}</p>
+  }
+</div>

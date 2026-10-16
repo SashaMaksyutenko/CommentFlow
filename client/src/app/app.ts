@@ -1,10 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
+import { AddedNotice } from './comments/added-notice/added-notice';
 import { CommentDialog } from './comments/comment-dialog/comment-dialog';
 import { CommentsTable } from './comments/comments-table/comments-table';
 import { CommentDialogService } from './services/comment-dialog.service';
 
 @Component({
-  imports: [CommentDialog, CommentsTable],
+  imports: [AddedNotice, CommentDialog, CommentsTable],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',
