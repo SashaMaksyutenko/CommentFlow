@@ -4,6 +4,7 @@ import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@a
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
 import { CommentEventsService } from '../../services/comment-events.service';
+import { CommentDialogService } from '../../services/comment-dialog.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { CommentsTable } from './comments-table';
 
@@ -418,6 +419,7 @@ describe('CommentsTable', () => {
     element.querySelectorAll<HTMLButtonElement>('.reply-button')[1].click();
 
     expect(TestBed.inject(ReplyTargetService).target()).toEqual(second);
+    expect(TestBed.inject(CommentDialogService).isOpen()).toBe(true);
   });
 
   it('can show the replies of several comments at once', async () => {

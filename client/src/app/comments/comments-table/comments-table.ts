@@ -5,7 +5,7 @@ import { CommentModel } from '../../models/comment.model';
 import { CommentSortField, CommentsQuery, PagedResponse, SortDirection } from '../../models/paging.model';
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
-import { ReplyTargetService } from '../../services/reply-target.service';
+import { CommentDialogService } from '../../services/comment-dialog.service';
 import { AttachmentView } from '../attachment-view/attachment-view';
 import { CommentReplies } from '../comment-replies/comment-replies';
 import { replaceAttachment } from '../replace-attachment';
@@ -21,8 +21,8 @@ export class CommentsTable implements OnInit, OnDestroy {
   private readonly api = inject(CommentsApiService);
   private readonly events = inject(CommentEventsService);
 
-  // The Reply button of a row tells the comment form whom the visitor answers
-  protected readonly replyTarget = inject(ReplyTargetService);
+  // The Reply button of a row opens the comment form for an answer to this comment
+  protected readonly dialog = inject(CommentDialogService);
 
   // The request that is running now, if any
   private request?: Subscription;

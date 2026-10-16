@@ -48,7 +48,7 @@
                   >
                     {{ repliesOpen(comment.id) ? 'Hide replies' : 'Show replies' }}
                   </button>
-                  <button type="button" class="reply-button" (click)="replyTarget.replyTo(comment)">Reply</button>
+                  <button type="button" class="reply-button" (click)="dialog.openReply(comment)">Reply</button>
                 </td>
               </tr>
               <tr class="card-body">

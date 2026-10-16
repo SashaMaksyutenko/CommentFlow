@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, input } from '@angular/core';
 import { CommentModel } from '../../models/comment.model';
-import { ReplyTargetService } from '../../services/reply-target.service';
+import { CommentDialogService } from '../../services/comment-dialog.service';
 import { AttachmentView } from '../attachment-view/attachment-view';
 import { UserAvatar } from '../user-avatar/user-avatar';
 
@@ -14,8 +14,8 @@ import { UserAvatar } from '../user-avatar/user-avatar';
   templateUrl: './reply-list.html',
 })
 export class ReplyList {
-  // The Reply button tells the comment form whom the visitor answers
-  protected readonly replyTarget = inject(ReplyTargetService);
+  // The Reply button opens the comment form for an answer to this reply
+  protected readonly dialog = inject(CommentDialogService);
 
   readonly replies = input.required<CommentModel[]>();
 }

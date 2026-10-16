@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
+import { CommentDialogService } from '../../services/comment-dialog.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { ReplyList } from './reply-list';
 
@@ -93,6 +94,7 @@ describe('ReplyList', () => {
     element.querySelectorAll<HTMLButtonElement>('.reply-button')[1].click();
 
     expect(TestBed.inject(ReplyTargetService).target()).toEqual(nested);
+    expect(TestBed.inject(CommentDialogService).isOpen()).toBe(true);
   });
 
   it('shows the file of a reply under its text', async () => {
