@@ -56,9 +56,6 @@
     }
   </div>
 
-  @if (status() === 'sent') {
-    <p class="result success" role="status">Your comment was added.</p>
-  }
   @if (status() === 'failed') {
     <p class="result error" role="alert">{{ failure() }}</p>
   }

@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CommentDialogService } from '../../services/comment-dialog.service';
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
@@ -26,6 +27,9 @@ export class CommentForm {
   private readonly api = inject(CommentsApiService);
   private readonly events = inject(CommentEventsService);
 
+  // The window the form lives in: it is closed when the comment is added
+  private readonly dialog = inject(CommentDialogService);
+
   // Which comment is being answered, if any. The template shows it above the fields.
   protected readonly replyTarget = inject(ReplyTargetService);
 
@@ -38,8 +42,8 @@ export class CommentForm {
   // The <textarea> from the template, to put the cursor into it
   private readonly textField = viewChild.required<ElementRef<HTMLTextAreaElement>>('textField');
 
-  // What happened with the last sending: nothing yet, in progress, done or refused
-  protected readonly status = signal<'idle' | 'sending' | 'sent' | 'failed'>('idle');
+  // What happened with the last sending: nothing yet (or done), in progress or refused
+  protected readonly status = signal<'idle' | 'sending' | 'failed'>('idle');
 
   // Why the last sending was refused, shown above the button
   protected readonly failure = signal('');
@@ -80,15 +84,14 @@ export class CommentForm {
     this.status.set('sending');
     this.api.createComment({ ...this.form.getRawValue(), parentId }).subscribe({
       next: (comment) => {
-        this.status.set('sent');
-        // The name, e-mail and home page stay for the next comment
-        this.form.controls.text.reset();
-        this.form.controls.file.reset();
-        this.captchaField().reload();
+        this.status.set('idle');
         // The reply is sent, the next comment is an ordinary one again
         this.replyTarget.clear();
-        // The rest of the page (the table) finds out about the new comment from here
+        // The rest of the page (the table, the notice at the bottom) finds out about the new comment from here
         this.events.notifyOwnComment(comment);
+        // The form goes away together with the window, so there is nothing to clear
+        // and no new CAPTCHA picture to ask for: the next opening makes a fresh form
+        this.dialog.close();
       },
       error: (response: HttpErrorResponse) => {
         this.status.set('failed');

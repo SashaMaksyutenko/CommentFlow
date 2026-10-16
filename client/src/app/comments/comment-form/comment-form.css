@@ -42,10 +42,6 @@ textarea.ng-invalid.ng-touched {
   font-size: 0.875rem;
 }
 
-.success {
-  color: var(--color-success);
-}
-
 /* The line about how the sending went, right above the button */
 .result {
   margin: 0 0 0.75rem;

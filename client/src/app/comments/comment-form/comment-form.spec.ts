@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
+import { CommentDialogService } from '../../services/comment-dialog.service';
 import { CommentEventsService, CreatedComment } from '../../services/comment-events.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
 import { CommentForm } from './comment-form';
@@ -226,17 +227,13 @@ describe('CommentForm', () => {
       fixture.detectChanges();
     }
 
-    it('sends the chosen file with the comment and clears the file field after success', async () => {
+    it('sends the chosen file with the comment', () => {
       fillCorrectly();
       attach(new File(['picture'], 'photo.png', { type: 'image/png' }));
 
       submit();
-      const request = postRequest();
-      expect(((request.request.body as FormData).get('file') as File).name).toBe('photo.png');
-      request.flush(created, { status: 201, statusText: 'Created' });
-      await apiReturnsCaptcha('data:image/png;base64,BBBB');
 
-      expect(element.querySelector('app-attachment-field .remove')).toBeNull();
+      expect(((postRequest().request.body as FormData).get('file') as File).name).toBe('photo.png');
     });
 
     it('does not send a file of a wrong kind and says why', () => {
@@ -270,25 +267,35 @@ describe('CommentForm', () => {
       expect(submitButton().textContent).toContain('Sending');
 
       request.flush(created, { status: 201, statusText: 'Created' });
-      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+      await fixture.whenStable();
 
       expect(submitButton().disabled).toBe(false);
       expect(submitButton().textContent).toContain('Add comment');
     });
 
-    it('after success keeps the name, clears the text and shows a new CAPTCHA', async () => {
+    it('closes the window after success and asks for no new CAPTCHA', async () => {
+      const dialog = TestBed.inject(CommentDialogService);
+      dialog.openNew();
       fillCorrectly();
       submit();
 
       postRequest().flush(created, { status: 201, statusText: 'Created' });
+      await fixture.whenStable();
+
+      expect(dialog.isOpen()).toBe(false);
+      // The form goes away with the window. afterEach checks that no new picture was asked for.
+    });
+
+    it('keeps the window open when the server refuses the comment', async () => {
+      const dialog = TestBed.inject(CommentDialogService);
+      dialog.openNew();
+      fillCorrectly();
+      submit();
+
+      postRequest().flush('error', { status: 500, statusText: 'Server Error' });
       await apiReturnsCaptcha('data:image/png;base64,BBBB');
 
-      expect(element.querySelector('[role="status"]')?.textContent).toContain('Your comment was added');
-      expect(field('userName').value).toBe('Sasha1');
-      expect(field('text').value).toBe('');
-      expect(field('captchaAnswer').value).toBe('');
-      expect(captchaPicture()).toBe('data:image/png;base64,BBBB');
-      expect(element.querySelectorAll('.error').length).toBe(0);
+      expect(dialog.isOpen()).toBe(true);
     });
 
     it('tells the rest of the app about the created comment as the visitor own one', async () => {
@@ -298,7 +305,7 @@ describe('CommentForm', () => {
       submit();
 
       postRequest().flush(created, { status: 201, statusText: 'Created' });
-      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+      await fixture.whenStable();
 
       expect(heard).toEqual([{ comment: created, own: true }]);
     });
@@ -406,7 +413,7 @@ describe('CommentForm', () => {
       const request = postRequest();
       expect((request.request.body as FormData).get('parentId')).toBe('7');
       request.flush({ ...created, id: 8, parentId: 7 }, { status: 201, statusText: 'Created' });
-      await apiReturnsCaptcha('data:image/png;base64,BBBB');
+      await fixture.whenStable();
 
       expect(element.querySelector('.replying')).toBeNull();
       expect(TestBed.inject(ReplyTargetService).target()).toBeNull();
