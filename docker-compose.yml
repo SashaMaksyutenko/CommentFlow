@@ -53,6 +53,8 @@ services:
     environment:
       # Inside Docker the API updates the database schema itself when it starts
       Database__MigrateOnStartup: "true"
+      # Visitors come through nginx (the client container): take their address from X-Forwarded-For
+      ForwardedHeaders__Enabled: "true"
       # The other containers are reached by their service names, not by localhost
       ConnectionStrings__CommentsDb: "Server=sqlserver,1433;Database=CommentsDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       ConnectionStrings__Redis: "redis:6379"

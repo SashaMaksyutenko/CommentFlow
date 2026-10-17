@@ -9,6 +9,7 @@ using Comments.Application.Users;
 using Comments.Infrastructure;
 using Comments.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 
@@ -49,6 +50,18 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddApiRateLimiting(builder.Configuration);
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    // Only the visitor's address: nginx puts it into the X-Forwarded-For header
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+
+    // By default only a proxy on this machine (127.0.0.1) is trusted. nginx is another container
+    // with a changing address, so the header is trusted from any sender. That is safe only
+    // because the API is reachable from outside through nginx alone (see docker-compose).
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
@@ -63,6 +76,14 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 
 // First in the pipeline, so it catches exceptions from everything below
 app.UseExceptionHandler();
+
+// Behind nginx every request comes from nginx's address. This puts the visitor's own address back,
+// before the rate limiter and the controllers read it. Off when the API is reached directly:
+// then anyone could write any address into the header and get around the limits.
+if (app.Configuration.GetValue<bool>("ForwardedHeaders:Enabled"))
+{
+    app.UseForwardedHeaders();
+}
 
 // Security headers for every response:
 // nosniff - the browser must not guess the content type (a .txt must never run as HTML),
