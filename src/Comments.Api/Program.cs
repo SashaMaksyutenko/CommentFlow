@@ -7,6 +7,7 @@ using Comments.Application.Comments;
 using Comments.Application.Comments.Events;
 using Comments.Application.Users;
 using Comments.Infrastructure;
+using Comments.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
@@ -52,6 +53,13 @@ builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
 var app = builder.Build();
+
+// In Docker the API brings the database up to date itself, before it takes any request.
+// Locally this is off: the schema is updated with "dotnet ef database update".
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    await app.Services.MigrateDatabaseAsync();
+}
 
 // First in the pipeline, so it catches exceptions from everything below
 app.UseExceptionHandler();
