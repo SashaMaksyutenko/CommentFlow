@@ -46,5 +46,34 @@ services:
       retries: 10
       start_period: 20s
 
+  api:
+    build:
+      context: .
+      dockerfile: src/Comments.Api/Dockerfile
+    environment:
+      # Inside Docker the API updates the database schema itself when it starts
+      Database__MigrateOnStartup: "true"
+      # The other containers are reached by their service names, not by localhost
+      ConnectionStrings__CommentsDb: "Server=sqlserver,1433;Database=CommentsDb;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+      ConnectionStrings__RabbitMq: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672"
+      FileStorage__RootPath: /app/uploads
+    volumes:
+      # Uploaded files stay when the container is rebuilt
+      - uploads:/app/uploads
+    ports:
+      # Only from this machine, to check the API directly. Visitors will come through the client (nginx).
+      - "127.0.0.1:5080:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    # Starts again after a crash or a reboot of Docker, but not after "docker compose stop"
+    restart: unless-stopped
+
 volumes:
   sqlserver-data:
+  uploads:

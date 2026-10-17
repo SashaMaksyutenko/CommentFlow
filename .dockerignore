@@ -1,0 +1,12 @@
+# Files Docker never needs for a build. Fewer files = faster builds,
+# and secrets (.env) or local uploads can't end up inside an image by mistake.
+.git
+.vs
+.vscode
+.env
+**/bin
+**/obj
+**/uploads
+client/node_modules
+client/dist
+client/.angular
