@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentModel } from '../../models/comment.model';
+import { AuthorMemoryService } from '../../services/author-memory.service';
 import { CommentDialogService } from '../../services/comment-dialog.service';
 import { CommentEventsService, CreatedComment } from '../../services/comment-events.service';
 import { ReplyTargetService } from '../../services/reply-target.service';
@@ -57,6 +58,36 @@ describe('CommentForm', () => {
 
   it('shows no errors before the visitor does anything', () => {
     expect(element.querySelectorAll('.error').length).toBe(0);
+  });
+
+  it('starts with the name, e-mail and home page typed last time, and an empty text', async () => {
+    TestBed.inject(AuthorMemoryService).save({ userName: 'Olena2', email: 'olena@example.com', homePage: 'https://olena.dev' });
+
+    // A new form, the way the window makes one at every opening
+    fixture = TestBed.createComponent(CommentForm);
+    element = fixture.nativeElement;
+    fixture.detectChanges();
+    await apiReturnsCaptcha('data:image/png;base64,BBBB');
+
+    expect(field('userName').value).toBe('Olena2');
+    expect(field('email').value).toBe('olena@example.com');
+    expect(field('homePage').value).toBe('https://olena.dev');
+    expect(field('text').value).toBe('');
+  });
+
+  it('keeps the name, e-mail and home page when it goes away, but not the text', () => {
+    fill('userName', 'Sasha1');
+    fill('email', 'sasha@example.com');
+    fill('homePage', 'https://example.com');
+    fill('text', 'Not kept');
+
+    fixture.destroy();
+
+    expect(TestBed.inject(AuthorMemoryService).get()).toEqual({
+      userName: 'Sasha1',
+      email: 'sasha@example.com',
+      homePage: 'https://example.com',
+    });
   });
 
   it('asks for the required fields when an empty form is sent', () => {

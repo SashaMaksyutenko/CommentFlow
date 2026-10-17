@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, effect, inject, signal, viewChild } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AuthorMemoryService } from '../../services/author-memory.service';
 import { CommentDialogService } from '../../services/comment-dialog.service';
 import { CommentEventsService } from '../../services/comment-events.service';
 import { CommentsApiService } from '../../services/comments-api.service';
@@ -23,12 +24,16 @@ const FORM_FIELDS: CommentFormField[] = ['userName', 'email', 'homePage', 'text'
   styleUrl: './comment-form.css',
   templateUrl: './comment-form.html',
 })
-export class CommentForm {
+export class CommentForm implements OnDestroy {
   private readonly api = inject(CommentsApiService);
   private readonly events = inject(CommentEventsService);
 
   // The window the form lives in: it is closed when the comment is added
   private readonly dialog = inject(CommentDialogService);
+
+  // The name, e-mail and home page typed the last time the window was open
+  private readonly authorMemory = inject(AuthorMemoryService);
+  private readonly author = this.authorMemory.get();
 
   // Which comment is being answered, if any. The template shows it above the fields.
   protected readonly replyTarget = inject(ReplyTargetService);
@@ -48,11 +53,12 @@ export class CommentForm {
   // Why the last sending was refused, shown above the button
   protected readonly failure = signal('');
 
-  // Every field: its starting value and the rules it must pass
+  // Every field: its starting value and the rules it must pass.
+  // The name, e-mail and home page start with what the visitor typed last time.
   protected readonly form = this.formBuilder.group({
-    userName: ['', [notBlank, Validators.maxLength(MAX_LENGTH.userName), Validators.pattern(USER_NAME_PATTERN)]],
-    email: ['', [notBlank, Validators.maxLength(MAX_LENGTH.email), Validators.pattern(EMAIL_PATTERN)]],
-    homePage: ['', [Validators.maxLength(MAX_LENGTH.homePage), httpUrl]],
+    userName: [this.author.userName, [notBlank, Validators.maxLength(MAX_LENGTH.userName), Validators.pattern(USER_NAME_PATTERN)]],
+    email: [this.author.email, [notBlank, Validators.maxLength(MAX_LENGTH.email), Validators.pattern(EMAIL_PATTERN)]],
+    homePage: [this.author.homePage, [Validators.maxLength(MAX_LENGTH.homePage), httpUrl]],
     text: ['', [notBlank, Validators.maxLength(MAX_LENGTH.text)]],
     // The chosen file, null while nothing is attached
     file: [null as File | null, allowedFile],
@@ -69,6 +75,13 @@ export class CommentForm {
         this.textField().nativeElement.focus();
       }
     });
+  }
+
+  // The form goes away when the window closes, in any way: after sending, with ×, Escape
+  // or a click outside. What the visitor typed about themselves is kept for the next opening.
+  ngOnDestroy(): void {
+    const { userName, email, homePage } = this.form.getRawValue();
+    this.authorMemory.save({ userName, email, homePage });
   }
 
   protected submit(): void {

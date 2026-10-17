@@ -94,4 +94,17 @@ describe('CommentDialog', () => {
     await fixture.whenStable();
     expect(dialog.isOpen()).toBe(false);
   });
+
+  it('remembers the name from one opening to the next', async () => {
+    await open(() => dialog.openNew());
+    const name = element.querySelector<HTMLInputElement>('#userName')!;
+    name.value = 'Sasha1';
+    name.dispatchEvent(new Event('input'));
+    element.querySelector<HTMLButtonElement>('.close')!.click();
+    await fixture.whenStable();
+
+    await open(() => dialog.openReply(answered));
+
+    expect(element.querySelector<HTMLInputElement>('#userName')!.value).toBe('Sasha1');
+  });
 });
