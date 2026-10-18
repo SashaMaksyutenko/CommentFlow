@@ -1,5 +1,6 @@
-import { Component, ElementRef, OnDestroy, effect, inject, input, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AttachmentModel } from '../../models/comment.model';
 import { CommentsApiService } from '../../services/comments-api.service';
 
@@ -16,6 +17,10 @@ export class AttachmentView implements OnDestroy {
   private request?: Subscription;
 
   readonly attachment = input.required<AttachmentModel>();
+
+  // The API gives "/uploads/<name>". When the page and the API are on different sites (Vercel and Render),
+  // the address of the API is put in front, or the browser would look for the file on the page's site.
+  protected readonly fileUrl = computed(() => environment.filesUrl + this.attachment().url);
 
   protected readonly isOpen = signal(false);
 
@@ -59,7 +64,7 @@ export class AttachmentView implements OnDestroy {
     this.textFailed.set(false);
 
     this.request?.unsubscribe();
-    this.request = this.api.getAttachmentText(this.attachment().url).subscribe({
+    this.request = this.api.getAttachmentText(this.fileUrl()).subscribe({
       next: (text) => this.text.set(text),
       error: () => this.textFailed.set(true),
     });

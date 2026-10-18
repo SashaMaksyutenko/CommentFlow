@@ -5,7 +5,7 @@
   @case ('Ready') {
     @if (file.type === 'Image') {
       <button type="button" class="thumbnail" [attr.aria-label]="'Open ' + file.fileName" (click)="open()">
-        <img [src]="file.url" [alt]="file.fileName" loading="lazy" />
+        <img [src]="fileUrl()" [alt]="file.fileName" loading="lazy" />
       </button>
     } @else {
       <button type="button" class="text-file" (click)="open()">{{ file.fileName }}</button>
@@ -46,7 +46,7 @@
         <!-- Shown in its real size (the server keeps it within 320x240), so it stays sharp.
              A broken picture also counts as "arrived": the browser then shows its name instead. -->
         <img
-          [src]="file.url"
+          [src]="fileUrl()"
           [alt]="file.fileName"
           [class.loaded]="imageLoaded()"
           (load)="imageLoaded.set(true)"

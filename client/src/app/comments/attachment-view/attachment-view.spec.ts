@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { environment } from '../../../environments/environment';
 import { AttachmentModel } from '../../models/comment.model';
 import { AttachmentView } from './attachment-view';
 
@@ -204,5 +205,29 @@ describe('AttachmentView', () => {
     await fixture.whenStable();
 
     expect(lightbox()?.querySelector('.failed')?.textContent).toContain('Could not load the file');
+  });
+
+  describe('when the API is on another site', () => {
+    // The Vercel build sets this address; here it is set by hand and put back after each test
+    beforeEach(() => (environment.filesUrl = 'https://api.example'));
+    afterEach(() => (environment.filesUrl = ''));
+
+    it('takes the picture from the API address, the small one and the big one', async () => {
+      await show(attachment());
+      await openLightbox();
+
+      const pictures = Array.from(element.querySelectorAll('img')).map((img) => img.getAttribute('src'));
+      expect(pictures).toEqual(['https://api.example/uploads/abc.png', 'https://api.example/uploads/abc.png']);
+    });
+
+    it('loads the text of a TXT file from the API address', async () => {
+      await show(textFile);
+
+      await openLightbox();
+      http.expectOne('https://api.example/uploads/def.txt').flush('Hello');
+      await fixture.whenStable();
+
+      expect(lightbox()?.querySelector('pre')?.textContent).toBe('Hello');
+    });
   });
 });
