@@ -10,8 +10,6 @@ using Comments.Infrastructure;
 using Comments.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -106,33 +104,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 
-// Uploaded files are served from /uploads/<generated name>.
-// Only our four file types get a content type, anything else in the folder returns 404.
-Directory.CreateDirectory(uploadsPath);
-var uploadContentTypes = new FileExtensionContentTypeProvider(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-{
-    [".jpg"] = "image/jpeg",
-    [".png"] = "image/png",
-    [".gif"] = "image/gif",
-    [".txt"] = "text/plain"
-});
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = AttachmentResponse.UrlPrefix,
-    ContentTypeProvider = uploadContentTypes,
-    OnPrepareResponse = context =>
-    {
-        // Text files are saved as UTF-8, say so or Cyrillic may look broken
-        var response = context.Context.Response;
-        if (response.ContentType == "text/plain")
-        {
-            response.ContentType = "text/plain; charset=utf-8";
-        }
-    }
-});
-
+// Controllers include UploadsController, which gives out the uploaded files at /uploads/<name>
 app.MapControllers();
 app.MapHub<CommentsHub>(CommentsHub.Path);
 

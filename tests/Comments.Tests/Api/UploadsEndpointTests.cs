@@ -15,6 +15,7 @@ public class UploadsEndpointTests : IClassFixture<ApiFactory>, IDisposable
         File.WriteAllBytes(Path.Combine(_uploads, "pic.png"), [1, 2, 3]);
         File.WriteAllText(Path.Combine(_uploads, "note.txt"), "Привіт", new UTF8Encoding(false));
         File.WriteAllText(Path.Combine(_uploads, "page.html"), "<script>alert(1)</script>");
+        File.WriteAllBytes(Path.Combine(_uploads, "big.png.upload"), [4, 5, 6]);
 
         // Point the API to a temp folder instead of the real uploads folder
         _client = factory
@@ -39,6 +40,16 @@ public class UploadsEndpointTests : IClassFixture<ApiFactory>, IDisposable
     }
 
     [Fact]
+    public async Task Image_MayBeKeptByTheBrowser_BecauseItNeverChangesUnderItsName()
+    {
+        var response = await _client.GetAsync("/uploads/pic.png");
+
+        var cacheControl = response.Headers.CacheControl!;
+        Assert.True(cacheControl.Public);
+        Assert.Equal(TimeSpan.FromDays(365), cacheControl.MaxAge);
+    }
+
+    [Fact]
     public async Task TextFile_IsServedAsUtf8PlainText()
     {
         var response = await _client.GetAsync("/uploads/note.txt");
@@ -50,6 +61,7 @@ public class UploadsEndpointTests : IClassFixture<ApiFactory>, IDisposable
 
     [Theory]
     [InlineData("/uploads/page.html")]            // exists, but the type is not allowed
+    [InlineData("/uploads/big.png.upload")]       // an image still waiting for processing
     [InlineData("/uploads/missing.png")]
     [InlineData("/uploads/..%2Fappsettings.json")] // can't leave the folder
     public async Task OtherFiles_AreNotServed(string url)
