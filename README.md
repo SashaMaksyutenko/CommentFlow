@@ -109,6 +109,7 @@ Stop with `docker compose down` (the data stays in Docker volumes) or `docker co
    npm ci
    npx ng serve
    ```
+   On the first run the Angular CLI may ask whether to share usage data; any answer works.
 
 Don't run the local API and the `api` container at the same time: both would take image jobs from the same
 RabbitMQ queue, and a job could go to the instance that doesn't have the file.
