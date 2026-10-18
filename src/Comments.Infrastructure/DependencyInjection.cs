@@ -22,7 +22,8 @@ public static class DependencyInjection
         string? connectionString,
         string? redisConnectionString,
         string? rabbitMqConnectionString,
-        string uploadsPath)
+        string uploadsPath,
+        FileStorageProvider fileStorage)
     {
         // Fail fast: without a connection string the API cannot work at all.
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -61,7 +62,16 @@ public static class DependencyInjection
         services.AddSingleton<ICaptchaService, CaptchaService>();
 
         services.AddSingleton<IImageProcessor, MagickImageProcessor>();
-        services.AddSingleton<IFileStorage>(new LocalFileStorage(uploadsPath));
+
+        if (fileStorage == FileStorageProvider.Database)
+        {
+            // Scoped like the DbContext options it gets from AddDbContext
+            services.AddScoped<IFileStorage, DatabaseFileStorage>();
+        }
+        else
+        {
+            services.AddSingleton<IFileStorage>(new LocalFileStorage(uploadsPath));
+        }
 
         AddMessaging(services, rabbitMqConnectionString);
 

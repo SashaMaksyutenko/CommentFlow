@@ -130,7 +130,8 @@ Settings come from `appsettings.json`, user secrets (development) and environmen
 | `ConnectionStrings:CommentsDb` | — (required) | SQL Server connection string |
 | `ConnectionStrings:Redis` | `localhost:6379` | Redis; empty = in-memory cache |
 | `ConnectionStrings:RabbitMq` | — | RabbitMQ `amqp://` address; empty = in-memory queue |
-| `FileStorage:RootPath` | `uploads` | Folder for uploaded files (a Docker volume in Docker) |
+| `FileStorage:Provider` | `Disk` | Where uploaded files are kept: `Disk` (the folder below) or `Database` (the `StoredFiles` table, for hosts whose disk is wiped on restart) |
+| `FileStorage:RootPath` | `uploads` | Folder for uploaded files when the provider is `Disk` (a Docker volume in Docker) |
 | `Database:MigrateOnStartup` | `false` | Apply EF Core migrations when the API starts (`true` in Docker) |
 | `ForwardedHeaders:Enabled` | `false` | Take the visitor's IP from `X-Forwarded-For` (`true` behind nginx in Docker) |
 | `RateLimits:CaptchaPerMinute` | `30` | CAPTCHA pictures per IP per minute |

@@ -7,6 +7,7 @@ using Comments.Application.Comments;
 using Comments.Application.Comments.Events;
 using Comments.Application.Users;
 using Comments.Infrastructure;
+using Comments.Infrastructure.Files;
 using Comments.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -16,11 +17,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Relative path is resolved from the project folder, an absolute one (Docker volume) is used as is
 var uploadsPath = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["FileStorage:RootPath"] ?? "uploads");
 
+// Disk by default, Database on hosts without a lasting disk. A wrong value stops the API at start.
+var fileStorage = builder.Configuration.GetValue("FileStorage:Provider", FileStorageProvider.Disk);
+
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("CommentsDb"),
     builder.Configuration.GetConnectionString("Redis"),
     builder.Configuration.GetConnectionString("RabbitMq"),
-    uploadsPath);
+    uploadsPath,
+    fileStorage);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
