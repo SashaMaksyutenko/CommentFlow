@@ -17,7 +17,7 @@ namespace Comments.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -138,6 +138,21 @@ namespace Comments.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("Comments.Infrastructure.Files.StoredFile", b =>
+                {
+                    b.Property<string>("FileName")
+                        .HasMaxLength(107)
+                        .HasColumnType("nvarchar(107)");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.HasKey("FileName");
+
+                    b.ToTable("StoredFiles", (string)null);
                 });
 
             modelBuilder.Entity("Comments.Domain.Entities.Attachment", b =>

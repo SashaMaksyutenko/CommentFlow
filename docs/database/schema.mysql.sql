@@ -53,3 +53,12 @@ CREATE TABLE `Attachments` (
   CONSTRAINT `FK_Attachments_Comments_CommentId`
     FOREIGN KEY (`CommentId`) REFERENCES `Comments` (`Id`) ON DELETE CASCADE
 ) ENGINE = InnoDB;
+
+-- The content of uploaded files, when they are kept in the database instead of on disk
+-- (for hosts whose disk is wiped on restart). Linked to Attachments by the file name, not by a foreign key:
+-- an image waiting for processing is kept as "<StoredFileName>.upload".
+CREATE TABLE `StoredFiles` (
+  `FileName` VARCHAR(107) NOT NULL COMMENT 'Attachments.StoredFileName, or the same name + .upload',
+  `Content` LONGBLOB NOT NULL,
+  PRIMARY KEY (`FileName`)
+) ENGINE = InnoDB;

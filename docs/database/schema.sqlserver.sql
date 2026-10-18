@@ -1,4 +1,4 @@
-﻿-- The real database schema (MS SQL Server), generated from the EF Core migrations:
+-- The real database schema (MS SQL Server), generated from the EF Core migrations:
 --   dotnet ef migrations script --project src/Comments.Infrastructure --startup-project src/Comments.Api --output docs/database/schema.sqlserver.sql
 -- Don't edit it by hand: change the entities, add a migration and generate the file again.
 -- For MySQL Workbench open schema.mysql.sql instead.
@@ -82,6 +82,19 @@ ALTER TABLE [Attachments] ADD [Status] nvarchar(20) NOT NULL DEFAULT N'Ready';
 
 INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
 VALUES (N'20261011125901_AddAttachmentStatus', N'10.0.13');
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+CREATE TABLE [StoredFiles] (
+    [FileName] nvarchar(107) NOT NULL,
+    [Content] varbinary(max) NOT NULL,
+    CONSTRAINT [PK_StoredFiles] PRIMARY KEY ([FileName])
+);
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20261018170540_AddStoredFiles', N'10.0.13');
 
 COMMIT;
 GO

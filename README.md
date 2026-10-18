@@ -209,7 +209,14 @@ erDiagram
         nvarchar(10) Type "Image or Text"
         nvarchar(20) Status "Processing, Ready or Failed"
     }
+    StoredFiles {
+        nvarchar(107) FileName PK "Attachments.StoredFileName (+ .upload while processing)"
+        varbinary(max) Content
+    }
 ```
+
+`StoredFiles` holds the files themselves when they are kept in the database instead of on disk
+(for hosts whose disk is wiped on restart). It is linked to `Attachments` by the file name, not by a foreign key.
 
 Schema files in [docs/database](docs/database):
 - [schema.mysql.sql](docs/database/schema.mysql.sql): for **MySQL Workbench**. Open it with
