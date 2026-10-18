@@ -50,7 +50,7 @@ public static class DependencyInjection
         {
             services.AddStackExchangeRedisCache(options =>
             {
-                options.Configuration = redisConnectionString;
+                options.Configuration = RedisConnectionString.Normalize(redisConnectionString);
                 // Prefix for all our keys in Redis, e.g. "comments:captcha:<id>"
                 options.InstanceName = "comments:";
             });

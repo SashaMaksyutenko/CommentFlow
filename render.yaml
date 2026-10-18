@@ -1,0 +1,55 @@
+# Render Blueprint: the API and its Redis cache on Render's free plan.
+# Reference: https://render.com/docs/blueprint-spec
+#
+# The database (Azure SQL) and RabbitMQ (CloudAMQP) live outside Render. Their addresses hold passwords,
+# so they are not in this file: "sync: false" makes Render ask for them in the dashboard
+# when the Blueprint is created. The frontend is on Vercel (client/vercel.json).
+
+services:
+  - type: web
+    # The name gives the address https://commentflow-api.onrender.com,
+    # which the Vercel build uses (client/src/environments/environment.vercel.ts)
+    name: commentflow-api
+    runtime: docker
+    plan: free
+    # Closest to Ukraine. It can't be changed after the service is created.
+    region: frankfurt
+    dockerfilePath: ./src/Comments.Api/Dockerfile
+    dockerContext: .
+    # Liveness only: the free database may be asleep, and that must not make Render restart the API
+    healthCheckPath: /health
+    envVars:
+      # The port the API listens on inside its image, so Render sends the requests there
+      - key: PORT
+        value: "8080"
+      - key: Database__MigrateOnStartup
+        value: "true"
+      # The disk of a free Render service is wiped on every restart, so files go to the database
+      - key: FileStorage__Provider
+        value: Database
+      # Render's proxy is in front of the API
+      - key: ForwardedHeaders__Enabled
+        value: "true"
+      - key: ConnectionStrings__Redis
+        fromService:
+          type: keyvalue
+          name: commentflow-cache
+          property: connectionString
+      # Azure SQL: Server=tcp:<server>.database.windows.net,1433;Initial Catalog=<db>;User ID=...;Password=...;Encrypt=True
+      - key: ConnectionStrings__CommentsDb
+        sync: false
+      # CloudAMQP: amqps://<user>:<password>@<host>/<vhost>
+      - key: ConnectionStrings__RabbitMq
+        sync: false
+      # The address of the frontend on Vercel, e.g. https://commentflow.vercel.app
+      - key: Cors__AllowedOrigins__0
+        sync: false
+
+  - type: keyvalue
+    name: commentflow-cache
+    plan: free
+    region: frankfurt
+    # Empty: no connections from the internet, only from Render services like the API
+    ipAllowList: []
+    # It is only a cache: when it is full, the least used keys are dropped
+    maxmemoryPolicy: allkeys-lru
