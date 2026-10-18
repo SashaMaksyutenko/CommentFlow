@@ -1,0 +1,5 @@
+# Built again inside the image, so the local copies are not needed (and node_modules is huge)
+node_modules
+dist
+.angular
+.vscode

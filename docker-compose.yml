@@ -73,7 +73,25 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      # The port opens only after the migrations, so an open port means the API is ready.
+      # The image has no curl, but bash can open a TCP connection itself.
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     # Starts again after a crash or a reboot of Docker, but not after "docker compose stop"
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    ports:
+      # The address of the whole app: http://localhost:8080
+      - "8080:80"
+    depends_on:
+      # nginx starts when the API is ready, so the first visitors don't get "502 Bad Gateway"
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
