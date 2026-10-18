@@ -68,6 +68,22 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
+// A frontend on another address (Vercel) may call the API and SignalR only from the addresses listed here.
+// Empty by default: in Docker the browser gets the page and the API from one address and needs no CORS.
+// A trailing "/" is cut off, because the browser sends the address without it.
+var allowedOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+    .Select(origin => origin.TrimEnd('/'))
+    .ToArray();
+
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
+    .WithOrigins(allowedOrigins)
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    // The SignalR client sends its requests "with credentials", and then the browser wants this
+    .AllowCredentials()
+    // The browser may skip the extra OPTIONS request for 10 minutes
+    .SetPreflightMaxAge(TimeSpan.FromMinutes(10))));
+
 var app = builder.Build();
 
 // In Docker the API brings the database up to date itself, before it takes any request.
@@ -97,6 +113,9 @@ app.Use(async (context, next) =>
     context.Response.Headers.XFrameOptions = "DENY";
     await next();
 });
+
+// Before the rate limiter: the browser's OPTIONS check is answered here and doesn't use up the limits
+app.UseCors();
 
 app.UseRateLimiter();
 

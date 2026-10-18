@@ -134,6 +134,7 @@ Settings come from `appsettings.json`, user secrets (development) and environmen
 | `FileStorage:RootPath` | `uploads` | Folder for uploaded files when the provider is `Disk` (a Docker volume in Docker) |
 | `Database:MigrateOnStartup` | `false` | Apply EF Core migrations when the API starts (`true` in Docker) |
 | `ForwardedHeaders:Enabled` | `false` | Take the visitor's IP from `X-Forwarded-For` (`true` behind nginx in Docker) |
+| `Cors:AllowedOrigins` | empty | Addresses of a frontend on another domain (e.g. `https://app.vercel.app`) that may call the API and SignalR; empty = only the same address |
 | `RateLimits:CaptchaPerMinute` | `30` | CAPTCHA pictures per IP per minute |
 | `RateLimits:CommentsPerMinute` | `10` | New comments per IP per minute |
 | `RateLimits:PreviewPerMinute` | `60` | Previews per IP per minute |
