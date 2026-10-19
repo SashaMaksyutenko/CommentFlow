@@ -7,11 +7,16 @@ events and WebSocket.
 **Stack:** .NET 10 (ASP.NET Core Web API, EF Core) · MS SQL Server · Angular 22 · Redis · RabbitMQ (MassTransit)
 · MediatR · SignalR · nginx · Docker
 
+**Live demo:** https://overwide-jessenia-normative.ngrok-free.dev
+(the free ngrok plan first shows its own warning page, press **Visit Site** once; the demo runs on the author's
+computer, see [Deployment](#deployment)).
+
 ## Contents
 
 - [Features](#features)
 - [Quick start with Docker](#quick-start-with-docker)
 - [Local development](#local-development)
+- [Deployment](#deployment)
 - [Configuration](#configuration)
 - [How it works](#how-it-works)
 - [Database](#database)
@@ -119,6 +124,53 @@ A new migration:
 ```bash
 dotnet ef migrations add <Name> --project src/Comments.Infrastructure --startup-project src/Comments.Api --output-dir Persistence/Migrations
 ```
+
+## Deployment
+
+The live demo is the same Docker setup as in the [quick start](#quick-start-with-docker), running on the author's
+Windows computer and published through an [ngrok](https://ngrok.com) tunnel with a free permanent domain:
+
+```
+Visitor ──HTTPS──► ngrok ──► ngrok agent (Windows service) ──► nginx :8080 ──► API, SQL Server, Redis, RabbitMQ
+```
+
+- **After a reboot** Docker starts every container again (`restart: unless-stopped`). The API retries the database
+  connection until SQL Server is up, and nginx looks the API up again every 10 seconds, so the order doesn't matter.
+  The ngrok agent runs as a Windows service and starts with Windows.
+- **The visitor's IP address:** ngrok adds it at the end of `X-Forwarded-For`. nginx trusts that header only from
+  Docker's private networks and takes its last address (`set_real_ip_from`, `real_ip_header` in
+  [client/nginx.conf](client/nginx.conf)), so rate limits and the IP saved with a comment belong to the real visitor,
+  and an address a visitor writes into the header is ignored.
+
+**A public copy of your own**
+1. Start the app: `docker compose up -d --build`.
+2. Install ngrok, add your token (`ngrok config add-authtoken <token>`) and find your free dev domain in the
+   ngrok dashboard under *Domains*.
+3. Try it: `ngrok http 8080 --url=https://<your-domain>`.
+4. To start the tunnel with Windows, describe it in `ngrok.yml`
+   (`ngrok config check` shows where the file is):
+   ```yaml
+   tunnels:
+     commentflow:
+       proto: http
+       addr: 8080
+       domain: <your-domain>
+   ```
+   and install the service from an administrator terminal:
+   ```powershell
+   ngrok service install --config "<path to ngrok.yml>"
+   ngrok service start
+   ```
+
+**Limits of this setup:** the site works only while that computer is on and online, and Docker Desktop starts
+only after someone signs in to Windows. The free ngrok plan shows a warning page with the host's IP address before
+the site (once per visitor) and allows about 1 GB of traffic and 20,000 requests a month.
+
+**Cloud option (prepared, not live).** The repository can also run without the author's computer: the client on
+Vercel ([client/vercel.json](client/vercel.json), build configuration `vercel`) and the API on Render
+([render.yaml](render.yaml)) with a cloud SQL Server database, Redis and RabbitMQ. The settings it needs are off
+by default: `FileStorage:Provider=Database` (a free Render disk is wiped on every restart), `Cors:AllowedOrigins`
+(the page and the API on different domains); `ConnectionStrings:Redis` also accepts `redis://` addresses.
 
 ## Configuration
 
