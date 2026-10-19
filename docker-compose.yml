@@ -16,6 +16,9 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    # Starts again after a crash or a reboot of Docker, but not after "docker compose stop".
+    # After a reboot "depends_on" is not waited for: the API keeps retrying until the database is up.
+    restart: unless-stopped
 
   redis:
     image: redis:8-alpine
@@ -29,6 +32,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
   rabbitmq:
     # "management" adds a web page for queues: http://localhost:15672
@@ -45,6 +49,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+    restart: unless-stopped
 
   api:
     build:
